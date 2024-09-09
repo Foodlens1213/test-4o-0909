@@ -25,6 +25,10 @@ handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 # OpenAI API key
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+@app.route("/")
+def home():
+    return "Hello! This is your LINE Bot server."
+    
 @app.route("/callback", methods=["POST"])
 def callback():
     # get X-Line-Signature header value
