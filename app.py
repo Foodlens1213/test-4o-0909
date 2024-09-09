@@ -53,7 +53,7 @@ def handle_message(event):
 
     # Send the user's message to OpenAI GPT
     response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",  # Replace with "gpt-4" if using GPT-4 API
+        model="gpt-4o-mini",  # Replace with "gpt-4" if using GPT-4 API
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": user_message},
