@@ -3,7 +3,7 @@ openai.api_key  = "<Your API KEY>"
 
 #For Chat Completion
 response = openai.chat.completions.create(
-  model="gpt-4o",
+  model="gpt-4o-mini",
   messages=[
     {"role": "system", "content": "You are a helpful assistant."},
     {"role": "user", "content": "Who won the world series in 2020?"},
@@ -15,7 +15,7 @@ print(response.choices[0].message.content)
 
 #For Image Processing
 response = openai.chat.completions.create(
-  model="gpt-4o",
+  model="gpt-4o-mini",
   messages=[
     {
       "role": "user",
@@ -74,7 +74,7 @@ PROMPT_MESSAGES = [
     },
 ]
 params = {
-    "model": "gpt-4o",
+    "model": "gpt-4o-mini",
     "messages": PROMPT_MESSAGES,
     "max_tokens": 200,
 }
