@@ -1,0 +1,11 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Sep  9 21:35:30 2024
+
+@author: 蔡
+"""
+
+flask
+line-bot-sdk
+openai
+requests
