@@ -25,6 +25,8 @@ handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 # OpenAI API key
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+openai.api_key = openai.api_key
+
 @app.route("/")
 def home():
     return "Hello! This is your LINE Bot server."
@@ -53,7 +55,7 @@ def handle_message(event):
 
     # Send the user's message to OpenAI GPT
     response = openai.ChatCompletion.create(
-        model="gpt-4o-mini",  # Replace with "gpt-4" if using GPT-4 API
+        model="gpt-4",  # Replace with "gpt-4" if using GPT-4 API
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": user_message},
@@ -70,4 +72,3 @@ def handle_message(event):
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))  # Render will provide the PORT env variable
     app.run(host="0.0.0.0", port=port)
-
