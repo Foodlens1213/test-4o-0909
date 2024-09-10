@@ -1,9 +1,9 @@
 import openai
-openai.api_key  = "<Your API KEY>"
+openai.api_key  = "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"
 
 #For Chat Completion
 response = openai.chat.completions.create(
-  model="gpt-4o-mini",
+  model="gpt-4",
   messages=[
     {"role": "system", "content": "You are a helpful assistant."},
     {"role": "user", "content": "Who won the world series in 2020?"},
@@ -15,7 +15,7 @@ print(response.choices[0].message.content)
 
 #For Image Processing
 response = openai.chat.completions.create(
-  model="gpt-4o-mini",
+  model="gpt-4",
   messages=[
     {
       "role": "user",
@@ -74,7 +74,7 @@ PROMPT_MESSAGES = [
     },
 ]
 params = {
-    "model": "gpt-4o-mini",
+    "model": "gpt-4",
     "messages": PROMPT_MESSAGES,
     "max_tokens": 200,
 }
