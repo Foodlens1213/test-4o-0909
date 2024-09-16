@@ -25,8 +25,6 @@ handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 # OpenAI API key
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-openai.api_key = openai.api_key
-
 @app.route("/")
 def home():
     return "Hello! This is your LINE Bot server."
@@ -53,9 +51,13 @@ def callback():
 def handle_message(event):
     user_message = event.message.text
 
-    # Send the user's message to OpenAI GPT
+    # 這裡可以過濾掉觸發自動回覆的關鍵字
+    if user_message in ['食譜推薦', '料理推薦']:  # 關鍵字列表，保持由LINE自動回覆處理
+        return  # 當使用者傳送關鍵字時，讓LINE的自動回覆處理
+
+    # 非關鍵字訊息，由ChatGPT處理
     response = openai.ChatCompletion.create(
-        model="gpt-4",  # Replace with "gpt-4" if using GPT-4 API
+        model="gpt-4",  # 使用GPT-4模型
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": user_message},
