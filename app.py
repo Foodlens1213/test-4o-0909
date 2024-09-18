@@ -6,6 +6,8 @@ Created on Mon Sep  9 21:40:00 2024
 """
 
 from flask import Flask, request, abort
+from linebot import LineBotApi, WebhookHandler
+from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 import openai
 import os
@@ -17,8 +19,8 @@ load_dotenv()
 app = Flask(__name__)
 
 # LINE Bot API and Webhook settings
-line_bot_api = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
-line_channel_secret = os.getenv("LINE_CHANNEL_SECRET")
+line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
+handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 
 # OpenAI API key
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -35,29 +37,23 @@ def callback():
     # Log the request body for debugging purposes
     print(f"Received Webhook request: Body: {body}")
 
-    # 模擬手動處理 Webhook 請求
     try:
-        # 直接解析 Webhook 請求
-        event_data = request.get_json()
-        events = event_data.get("events", [])
-        if not events:
-            print("No events found in the request body")
-            return "OK"
-
-        for event in events:
-            if event["type"] == "message" and event["message"]["type"] == "text":
-                print("Processing message event...")  # 日誌：開始處理訊息事件
-                handle_message(event)  # 手動處理消息事件
-
+        # Handle the Webhook request
+        signature = request.headers["X-Line-Signature"]  # Fetch the signature
+        handler.handle(body, signature)  # Properly handle the webhook
+    except InvalidSignatureError:
+        print("Invalid Signature Error!")  # 捕捉簽名錯誤
+        abort(400)
     except Exception as e:
-        print(f"Error handling webhook request: {e}")
+        print(f"Error handling webhook request: {e}")  # 捕捉其他錯誤
         abort(500)
 
     return "OK"
 
-# 手動處理收到的消息
+# 處理來自 LINE 的訊息事件
+@handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
-    user_message = event["message"]["text"]
+    user_message = event.message.text
     print(f"Received message: {user_message}")
 
     # 檢查是否為觸發多頁訊息的關鍵字
@@ -82,9 +78,16 @@ def handle_message(event):
         print(f"Error calling ChatGPT: {e}")
         reply_text = "抱歉，我暫時無法處理您的請求。"
 
-    # 打印回覆的訊息
-    print(f"Replied with message: {reply_text}")
+    # 回覆給 LINE 使用者
+    try:
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=reply_text)
+        )
+        print(f"Replied with message: {reply_text}")  # 記錄回應的內容
+    except Exception as e:
+        print(f"Error sending reply: {e}")  # 捕捉回覆時的錯誤
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 5000))
+    port = int(os.getenv("PORT", 5000))  # 使用 Render 提供的 PORT 環境變數
     app.run(host="0.0.0.0", port=port)
