@@ -53,11 +53,12 @@ def handle_message(event):
 
     # 檢查是否為觸發多頁訊息的關鍵字
     if user_message in ['料理推薦', '食譜推薦']:  # 關鍵字列表
-        return  # 當使用者傳送關鍵字時，讓LINE的自動回覆處理
+        print(f"Received keyword: {user_message}, triggering multi-page message.")  # 日誌顯示觸發了多頁訊息
+        return  # 多頁訊息由LINE自動回覆處理
 
     # 非關鍵字訊息，由ChatGPT處理
+    print(f"Received non-keyword message: {user_message}, sending to ChatGPT.")
     try:
-        print(f"Sending message to ChatGPT: {user_message}")  # 日誌記錄用戶輸入的訊息
         response = openai.ChatCompletion.create(
             model="gpt-4",  # 使用 GPT-4 模型，或 "gpt-3.5-turbo"
             messages=[
