@@ -29,22 +29,30 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 def home():
     return "Hello! This is your LINE Bot server."
     
-@app.route("/callback", methods=["POST"])
+@app.route("/callback", methods=["POST", "GET"])
 def callback():
     # get X-Line-Signature header value
-    signature = request.headers["X-Line-Signature"]
-
-    # get request body as text
+    signature = request.headers.get("X-Line-Signature", "No signature")
+    method = request.method
     body = request.get_data(as_text=True)
-    app.logger.info(f"Request body: {body}")  # 記錄完整的 Webhook 請求體
 
-    # handle webhook body
-    try:
-        handler.handle(body, signature)  # 處理 Webhook 請求
-    except InvalidSignatureError:
-        abort(400)
+    # 日誌記錄每個請求的類型和詳細信息
+    print(f"Received {method} request")
+    print(f"Signature: {signature}")
+    print(f"Request body: {body}")
+
+    if method == "POST":
+        # handle webhook body
+        try:
+            handler.handle(body, signature)
+        except InvalidSignatureError:
+            print("Invalid Signature Error!")
+            abort(400)
+    else:
+        print("Received GET request, which is not supported for Webhook")
 
     return "OK"
+
 
 # Handle text messages sent to the bot
 @handler.add(MessageEvent, message=TextMessage)
