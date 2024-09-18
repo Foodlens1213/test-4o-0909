@@ -1,5 +1,5 @@
 import openai
-openai.api_key  = "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"
+openai.api_key  = "sk-uUMK78igJLfnoTPdfLTZHXXbylhyyDbs848o_gGYckT3BlbkFJn_4xONOtI_M5_m7ynV02JLCXill4AM1KcAS0BqpagA"
 
 #For Chat Completion
 response = openai.chat.completions.create(
