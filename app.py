@@ -17,8 +17,8 @@ load_dotenv()
 app = Flask(__name__)
 
 # LINE Bot API and Webhook settings
-line_bot_api = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")  # 使用環境變數
-line_channel_secret = os.getenv("LINE_CHANNEL_SECRET")  # 使用環境變數
+line_bot_api = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
+line_channel_secret = os.getenv("LINE_CHANNEL_SECRET")
 
 # OpenAI API key
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -37,7 +37,7 @@ def callback():
 
     # 模擬手動處理 Webhook 請求
     try:
-        # 直接解析 Webhook 請求，不使用 handler.handle()
+        # 直接解析 Webhook 請求
         event_data = request.get_json()
         events = event_data.get("events", [])
         if not events:
@@ -46,6 +46,7 @@ def callback():
 
         for event in events:
             if event["type"] == "message" and event["message"]["type"] == "text":
+                print("Processing message event...")  # 日誌：開始處理訊息事件
                 handle_message(event)  # 手動處理消息事件
 
     except Exception as e:
@@ -81,7 +82,7 @@ def handle_message(event):
         print(f"Error calling ChatGPT: {e}")
         reply_text = "抱歉，我暫時無法處理您的請求。"
 
-    # 暫時不處理回覆至 LINE
+    # 打印回覆的訊息
     print(f"Replied with message: {reply_text}")
 
 if __name__ == "__main__":
