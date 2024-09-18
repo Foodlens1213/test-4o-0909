@@ -1,10 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Mon Sep  9 21:40:00 2024
-
-@author: 蔡
-"""
-
 from flask import Flask, request, abort
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
@@ -28,24 +22,26 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 @app.route("/")
 def home():
     return "Hello! This is your LINE Bot server."
-    
+
+# 健康檢查路徑
+@app.route("/health", methods=["GET"])
+def health_check():
+    return "OK", 200  # 健康檢查回應
+
 @app.route("/callback", methods=["POST"])
 def callback():
     # Get request body as text
     body = request.get_data(as_text=True)
-
-    # Log the request body for debugging purposes
     print(f"Received Webhook request: Body: {body}")
 
     try:
-        # Handle the Webhook request
-        signature = request.headers["X-Line-Signature"]  # Fetch the signature
-        handler.handle(body, signature)  # Properly handle the webhook
+        signature = request.headers["X-Line-Signature"]
+        handler.handle(body, signature)
     except InvalidSignatureError:
-        print("Invalid Signature Error!")  # 捕捉簽名錯誤
+        print("Invalid Signature Error!")
         abort(400)
     except Exception as e:
-        print(f"Error handling webhook request: {e}")  # 捕捉其他錯誤
+        print(f"Error handling webhook request: {e}")
         abort(500)
 
     return "OK"
@@ -56,15 +52,13 @@ def handle_message(event):
     user_message = event.message.text
     print(f"Received message: {user_message}")
 
-    # 檢查是否為觸發多頁訊息的關鍵字
-    if user_message in ['料理推薦', '食譜推薦']:  # 關鍵字列表
+    if user_message in ['料理推薦', '食譜推薦']:
         print(f"Received keyword: {user_message}, triggering multi-page message.")
-        return  # 多頁訊息由 LINE 自動回覆處理
+        return
 
-    # 非關鍵字訊息，由 ChatGPT 處理
+    # 使用 ChatGPT 處理非關鍵字訊息
     print(f"Received non-keyword message: {user_message}, sending to ChatGPT.")
     try:
-        # 使用 OpenAI GPT 生成回覆
         response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[
@@ -73,7 +67,7 @@ def handle_message(event):
             ]
         )
         reply_text = response.choices[0].message['content'].strip()
-        print(f"ChatGPT response: {reply_text}")  # 打印 ChatGPT 的回應
+        print(f"ChatGPT response: {reply_text}")
     except Exception as e:
         print(f"Error calling ChatGPT: {e}")
         reply_text = "抱歉，我暫時無法處理您的請求。"
@@ -84,10 +78,10 @@ def handle_message(event):
             event.reply_token,
             TextSendMessage(text=reply_text)
         )
-        print(f"Replied with message: {reply_text}")  # 記錄回應的內容
+        print(f"Replied with message: {reply_text}")
     except Exception as e:
-        print(f"Error sending reply: {e}")  # 捕捉回覆時的錯誤
+        print(f"Error sending reply: {e}")
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 5000))  # 使用 Render 提供的 PORT 環境變數
+    port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
