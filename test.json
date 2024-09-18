@@ -1,0 +1,46 @@
+{
+    "type": "carousel",
+    "contents": [
+      {
+        "type": "bubble",
+        "body": {
+          "type": "box",
+          "layout": "vertical",
+          "contents": [
+            {
+              "type": "text",
+              "text": "這是 ChatGPT 回覆的第一部分"
+            }
+          ]
+        },
+        "footer": {
+          "type": "box",
+          "layout": "vertical",
+          "contents": [
+            {
+              "type": "button",
+              "action": {
+                "type": "postback",
+                "label": "收藏這條訊息",
+                "data": "action=add&message_id=1"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "type": "bubble",
+        "body": {
+          "type": "box",
+          "layout": "vertical",
+          "contents": [
+            {
+              "type": "text",
+              "text": "這是 ChatGPT 回覆的第二部分"
+            }
+          ]
+        }
+      }
+    ]
+  }
+  
