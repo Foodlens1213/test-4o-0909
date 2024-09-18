@@ -38,13 +38,14 @@ def callback():
     print(f"Received Webhook request: Body: {body}")
 
     try:
-        # Handle the Webhook request, temporarily skipping signature validation
-        handler.handle(body, None)  # 設置簽名為 None，跳過檢查
+        # Handle the Webhook request, 跳過簽名驗證以進行測試
+        handler.handle(body, None)  # 將簽名設置為 None
     except Exception as e:
         print(f"Error handling webhook request: {e}")
         abort(500)
 
     return "OK"
+
 
 # Handle text messages sent to the bot
 @handler.add(MessageEvent, message=TextMessage)
