@@ -36,11 +36,11 @@ def callback():
 
     # get request body as text
     body = request.get_data(as_text=True)
-    app.logger.info(f"Request body: {body}")
+    app.logger.info(f"Request body: {body}")  # 記錄完整的 Webhook 請求體
 
     # handle webhook body
     try:
-        handler.handle(body, signature)
+        handler.handle(body, signature)  # 處理 Webhook 請求
     except InvalidSignatureError:
         abort(400)
 
@@ -59,6 +59,7 @@ def handle_message(event):
     # 非關鍵字訊息，由ChatGPT處理
     print(f"Received non-keyword message: {user_message}, sending to ChatGPT.")
     try:
+        # 透過 OpenAI GPT 生成回覆
         response = openai.ChatCompletion.create(
             model="gpt-4",  # 使用 GPT-4 模型，或 "gpt-3.5-turbo"
             messages=[
@@ -73,10 +74,14 @@ def handle_message(event):
         reply_text = "抱歉，我暫時無法處理您的請求。"
 
     # 將回應發送給使用者
-    line_bot_api.reply_message(
-        event.reply_token,
-        TextSendMessage(text=reply_text)
-    )
+    try:
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=reply_text)
+        )
+        print(f"Replied with message: {reply_text}")  # 記錄回應結果
+    except Exception as e:
+        print(f"Error sending reply: {e}")  # 記錄回應錯誤
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))  # Render will provide the PORT env variable
