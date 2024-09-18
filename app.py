@@ -29,30 +29,25 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 def home():
     return "Hello! This is your LINE Bot server."
     
-@app.route("/callback", methods=["POST", "GET"])
+@app.route("/callback", methods=["POST"])  # 限制只允許 POST 請求
 def callback():
-    # get X-Line-Signature header value
-    signature = request.headers.get("X-Line-Signature", "No signature")
-    method = request.method
+    # Get X-Line-Signature header value
+    signature = request.headers.get("X-Line-Signature", "")
     body = request.get_data(as_text=True)
 
-    # 日誌記錄每個請求的類型和詳細信息
-    print(f"Received {method} request")
-    print(f"Signature: {signature}")
-    print(f"Request body: {body}")
+    # 日誌記錄每個請求的詳細信息
+    print(f"Received Webhook request: Signature: {signature}, Body: {body}")
 
-    if method == "POST":
-        # handle webhook body
-        try:
-            handler.handle(body, signature)
-        except InvalidSignatureError:
-            print("Invalid Signature Error!")
-            abort(400)
-    else:
-        print("Received GET request, which is not supported for Webhook")
+    try:
+        handler.handle(body, signature)
+    except InvalidSignatureError:
+        print("Invalid Signature Error!")
+        abort(400)
+    except Exception as e:
+        print(f"Error handling webhook request: {e}")
+        abort(500)
 
     return "OK"
-
 
 # Handle text messages sent to the bot
 @handler.add(MessageEvent, message=TextMessage)
@@ -62,9 +57,9 @@ def handle_message(event):
     # 檢查是否為觸發多頁訊息的關鍵字
     if user_message in ['料理推薦', '食譜推薦']:  # 關鍵字列表
         print(f"Received keyword: {user_message}, triggering multi-page message.")  # 日誌顯示觸發了多頁訊息
-        return  # 多頁訊息由LINE自動回覆處理
+        return  # 多頁訊息由 LINE 自動回覆處理
 
-    # 非關鍵字訊息，由ChatGPT處理
+    # 非關鍵字訊息，由 ChatGPT 處理
     print(f"Received non-keyword message: {user_message}, sending to ChatGPT.")
     try:
         # 透過 OpenAI GPT 生成回覆
@@ -92,5 +87,5 @@ def handle_message(event):
         print(f"Error sending reply: {e}")  # 記錄回應錯誤
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 5000))  # Render will provide the PORT env variable
+    port = int(os.getenv("PORT", 5000))  # 使用 Render 提供的 PORT 環境變數
     app.run(host="0.0.0.0", port=port)
