@@ -1,17 +1,50 @@
-<!-- templates/favorites.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的最愛</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // 初始化 LIFF
+            liff.init({ liffId: "2006377706-w6PyQ9dA" })
+                .then(() => {
+                    // 取得使用者的基本資料
+                    return liff.getProfile();
+                })
+                .then(profile => {
+                    const userId = profile.userId;
+                    // 發送請求到 Flask API 獲取 "我的最愛"
+                    fetch(`/favorites/${userId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            const favoritesList = data.favorites;
+                            const favoritesContainer = document.getElementById("favorites");
+                            if (favoritesList.length > 0) {
+                                favoritesList.forEach(favorite => {
+                                    const listItem = document.createElement("li");
+                                    listItem.textContent = favorite;
+                                    favoritesContainer.appendChild(listItem);
+                                });
+                            } else {
+                                favoritesContainer.innerHTML = "<p>您的最愛清單是空的。</p>";
+                            }
+                        })
+                        .catch(error => {
+                            console.error("無法獲取最愛資料:", error);
+                        });
+                })
+                .catch(err => {
+                    console.error("LIFF 初始化失敗", err);
+                });
+        });
+    </script>
 </head>
 <body>
-    <h1>您的最愛</h1>
-    <ul>
-        {% for fav in fav_list %}
-            <li>{{ fav }}</li>
-        {% endfor %}
+    <h1>我的最愛</h1>
+    <ul id="favorites">
+        <p>載入中...</p>
     </ul>
 </body>
 </html>
