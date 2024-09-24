@@ -1,0 +1,17 @@
+<!-- templates/favorites.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的最愛</title>
+</head>
+<body>
+    <h1>您的最愛</h1>
+    <ul>
+        {% for fav in fav_list %}
+            <li>{{ fav }}</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
