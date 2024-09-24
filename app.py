@@ -22,6 +22,15 @@ handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 # OpenAI API key
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+# Step: Read Google Cloud credentials from environment variable and save to temp file
+google_credentials_content = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_CONTENT")
+if google_credentials_content:
+    # Write the credentials to a temporary file
+    credentials_path = "/tmp/google-credentials.json"
+    with open(credentials_path, "w") as f:
+        f.write(google_credentials_content)
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
+
 # Initialize Google Cloud Vision API client
 vision_client = vision.ImageAnnotatorClient()
 
