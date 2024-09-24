@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from flask import Flask, request, abort
+from flask import Flask, request, abort, render_template
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage, FlexSendMessage, PostbackAction
@@ -21,13 +21,6 @@ handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 
 # OpenAI API key
 openai.api_key = os.getenv("OPENAI_API_KEY")
-
-# 讀取 Google Cloud 憑證內容並寫入到臨時文件
-google_credentials_content = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_CONTENT")
-if google_credentials_content:
-    with open("/tmp/google-credentials.json", "w") as f:
-        f.write(google_credentials_content)
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/tmp/google-credentials.json"
 
 # Initialize Google Cloud Vision API client
 vision_client = vision.ImageAnnotatorClient()
@@ -247,6 +240,16 @@ def show_favorites(event, user_id):
         TextSendMessage(text=reply_text)
     )
     print(f"Displayed favorites for user {user_id}")
+
+# 顯示我的最愛的網頁
+@app.route("/favorites/<user_id>")
+def show_favorites_web(user_id):
+    favorites = get_favorites(user_id)
+    if favorites:
+        fav_list = [fav[0] for fav in favorites]
+    else:
+        fav_list = []
+    return render_template("favorites.html", fav_list=fav_list, user_id=user_id)
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
