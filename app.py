@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from flask import Flask, request, abort, render_template
+from flask import Flask, request, abort, jsonify, render_template
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage, FlexSendMessage, PostbackAction, URIAction
@@ -269,7 +269,12 @@ def show_favorites_web(user_id):
         fav_list = [fav[0] for fav in favorites]
     else:
         fav_list = []
-    return render_template("favorites.html", fav_list=fav_list, user_id=user_id)
+    
+    # 回傳為 JSON 給 LIFF 應用
+    return jsonify({
+        "user_id": user_id,
+        "favorites": fav_list
+    })
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
