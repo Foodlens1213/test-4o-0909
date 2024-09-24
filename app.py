@@ -2,7 +2,7 @@
 from flask import Flask, request, abort, render_template
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage, FlexSendMessage, PostbackAction
+from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage, FlexSendMessage, PostbackAction, URIAction
 import openai
 import os
 from google.cloud import vision
@@ -117,7 +117,7 @@ def handle_message(event):
         print(f"ChatGPT response: {reply_text}")
 
         # 使用 Flex Message 回應
-        reply_message = create_flex_message(reply_text)
+        reply_message = create_flex_message(reply_text, user_id)
     except Exception as e:
         print(f"Error calling ChatGPT: {e}")
         reply_message = TextSendMessage(text="抱歉，我暫時無法處理您的請求。")
@@ -132,9 +132,10 @@ def handle_message(event):
     except Exception as e:
         print(f"Error sending reply: {e}")
 
-# 創建多頁 Flex Message
-def create_flex_message(reply_text):
+# 創建多頁 Flex Message，並加入 LIFF 連結
+def create_flex_message(reply_text, user_id):
     """生成 Flex Message，包含回覆和加入我的最愛按鈕"""
+    liff_url = f"https://liff.line.me/{os.getenv('LIFF_ID')}/favorites/{user_id}"
     bubble = {
         "type": "bubble",
         "body": {
@@ -156,6 +157,16 @@ def create_flex_message(reply_text):
                     },
                     "margin": "md",
                     "color": "#1DB446"
+                },
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "uri",
+                        "label": "查看我的最愛",
+                        "uri": liff_url
+                    },
+                    "margin": "md",
+                    "color": "#0000FF"
                 }
             ]
         }
@@ -186,7 +197,7 @@ def handle_image(event):
         reply_text = "無法識別圖片中的食材，請嘗試另一張圖片。"
 
     # 使用 Flex Message 回應
-    reply_message = create_flex_message(reply_text)
+    reply_message = create_flex_message(reply_text, event.source.user_id)
 
     # 回覆給 LINE 使用者
     try:
