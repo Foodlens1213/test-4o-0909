@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
-from flask import Flask, request, abort, jsonify, render_template, redirect, url_for
+from flask import Flask, request, abort, jsonify, render_template
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage, FlexSendMessage, PostbackAction, URIAction
+from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage, FlexSendMessage, PostbackAction, URIAction, PostbackEvent
 import openai
 import os
 from google.cloud import vision
 from dotenv import load_dotenv
 import io
 import mysql.connector
-import requests
 
 # Load environment variables from .env file
 load_dotenv()
@@ -161,7 +160,7 @@ def create_flex_message(reply_text, user_id):
                     "action": {
                         "type": "postback",
                         "label": "加入我的最愛",
-                        "data": f"加入我的最愛:{reply_text}"
+                        "data": f"action=add_favorite&user_id={user_id}&message={reply_text}"
                     },
                     "margin": "md",
                     "color": "#1DB446"
@@ -184,6 +183,20 @@ def create_flex_message(reply_text, user_id):
         "contents": [bubble]
     }
     return FlexSendMessage(alt_text="多頁訊息", contents=carousel)
+
+# 處理 Postback 事件
+@handler.add(PostbackEvent)
+def handle_postback(event):
+    data = event.postback.data
+    params = dict(x.split('=') for x in data.split('&'))
+    
+    action = params.get('action')
+    user_id = params.get('user_id')
+    message = params.get('message')
+    
+    if action == 'add_favorite':
+        # 將訊息新增到使用者的最愛清單中
+        add_to_favorites(event, user_id, message)
 
 # 處理來自 LINE 的圖片訊息事件
 @handler.add(MessageEvent, message=ImageMessage)
