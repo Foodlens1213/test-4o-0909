@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from flask import Flask, request, abort, jsonify, render_template
+from flask import Flask, request, abort, jsonify, render_template, redirect, url_for
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage, FlexSendMessage, PostbackAction, URIAction
@@ -9,6 +9,7 @@ from google.cloud import vision
 from dotenv import load_dotenv
 import io
 import mysql.connector
+import requests
 
 # Load environment variables from .env file
 load_dotenv()
@@ -25,7 +26,6 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 # Step: Read Google Cloud credentials from environment variable and save to temp file
 google_credentials_content = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_CONTENT")
 if google_credentials_content:
-    # Write the credentials to a temporary file
     credentials_path = "/tmp/google-credentials.json"
     with open(credentials_path, "w") as f:
         f.write(google_credentials_content)
