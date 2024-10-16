@@ -5,38 +5,79 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的最愛</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            color: #333;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            background-color: #fff;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .loading {
+            color: #888;
+        }
+        .error {
+            color: red;
+        }
+    </style>
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             // 初始化 LIFF
-            liff.init({ liffId: "2006377706-w6PyQ9dA" })
+            liff.init({ liffId: "2006463836-0VmgLQA8" })
                 .then(() => {
-                    // 取得使用者的基本資料
-                    return liff.getProfile();
-                })
-                .then(profile => {
-                    const userId = profile.userId;
-                    // 發送請求到 Flask API 獲取 "我的最愛"
-                    fetch(`/favorites/${userId}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            const favoritesList = data.favorites;
-                            const favoritesContainer = document.getElementById("favorites");
-                            if (favoritesList.length > 0) {
-                                favoritesList.forEach(favorite => {
-                                    const listItem = document.createElement("li");
-                                    listItem.textContent = favorite;
-                                    favoritesContainer.appendChild(listItem);
-                                });
-                            } else {
-                                favoritesContainer.innerHTML = "<p>您的最愛清單是空的。</p>";
-                            }
-                        })
-                        .catch(error => {
-                            console.error("無法獲取最愛資料:", error);
-                        });
+                    // 確認是否登入
+                    if (!liff.isLoggedIn()) {
+                        // 未登入時，提示使用者登入
+                        liff.login();
+                    } else {
+                        // 取得使用者的基本資料
+                        liff.getProfile()
+                            .then(profile => {
+                                const userId = profile.userId;
+                                // 發送請求到 Flask API 獲取 "我的最愛"
+                                fetch(`/favorites/${userId}`)
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        const favoritesList = data.favorites;
+                                        const favoritesContainer = document.getElementById("favorites");
+                                        favoritesContainer.innerHTML = "";  // 清空預設載入中訊息
+                                        if (favoritesList.length > 0) {
+                                            favoritesList.forEach(favorite => {
+                                                const listItem = document.createElement("li");
+                                                listItem.textContent = favorite;
+                                                favoritesContainer.appendChild(listItem);
+                                            });
+                                        } else {
+                                            favoritesContainer.innerHTML = "<p>您的最愛清單是空的。</p>";
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error("無法獲取最愛資料:", error);
+                                        document.getElementById("favorites").innerHTML = "<p class='error'>無法載入最愛清單，請稍後再試。</p>";
+                                    });
+                            })
+                            .catch(err => {
+                                console.error("無法取得使用者資料", err);
+                                document.getElementById("favorites").innerHTML = "<p class='error'>無法取得您的資料，請稍後再試。</p>";
+                            });
+                    }
                 })
                 .catch(err => {
                     console.error("LIFF 初始化失敗", err);
+                    document.getElementById("favorites").innerHTML = "<p class='error'>LIFF 初始化失敗，請稍後再試。</p>";
                 });
         });
     </script>
@@ -44,7 +85,7 @@
 <body>
     <h1>我的最愛</h1>
     <ul id="favorites">
-        <p>載入中...</p>
+        <p class="loading">載入中...</p>
     </ul>
 </body>
 </html>
