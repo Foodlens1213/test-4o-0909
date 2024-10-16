@@ -2,7 +2,7 @@
 from flask import Flask, request, abort, jsonify, render_template
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage, FlexSendMessage, PostbackAction, URIAction, PostbackEvent
+from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage, FlexSendMessage, PostbackAction, PostbackEvent
 import openai
 import os
 from google.cloud import vision
@@ -22,7 +22,7 @@ handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 # OpenAI API key
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# Step: Read Google Cloud credentials from environment variable and save to temp file
+# Initialize Google Cloud Vision API client
 google_credentials_content = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_CONTENT")
 if google_credentials_content:
     credentials_path = "/tmp/google-credentials.json"
@@ -30,10 +30,9 @@ if google_credentials_content:
         f.write(google_credentials_content)
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
 
-# Initialize Google Cloud Vision API client
 vision_client = vision.ImageAnnotatorClient()
 
-# 設定 MySQL 連接
+# MySQL connection setup
 def get_db_connection():
     return mysql.connector.connect(
         host=os.getenv('MYSQL_HOST'),
@@ -41,37 +40,45 @@ def get_db_connection():
         database=os.getenv('MYSQL_DATABASE')
     )
 
-# 儲存最愛到資料庫
+# Save to favorites
 def save_to_favorites(user_id, favorite_text):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO favorites (user_id, favorite) VALUES (%s, %s)", (user_id, favorite_text))
-    conn.commit()
-    cursor.close()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO favorites (user_id, favorite) VALUES (%s, %s)", (user_id, favorite_text))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        print(f"已成功儲存至資料庫: {user_id}, {favorite_text}")
+    except mysql.connector.Error as err:
+        print(f"資料庫錯誤: {err}")
 
-# 查詢最愛
+# Fetch favorites
 def get_favorites(user_id):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT favorite FROM favorites WHERE user_id = %s", (user_id,))
-    favorites = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    return favorites
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT favorite FROM favorites WHERE user_id = %s", (user_id,))
+        favorites = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return favorites
+    except mysql.connector.Error as err:
+        print(f"資料庫錯誤: {err}")
+        return []
 
 @app.route("/")
 def home():
     return "Hello! This is your LINE Bot server."
 
-# 健康檢查路徑
+# Health check route
 @app.route("/health", methods=["GET"])
 def health_check():
-    return "OK", 200  # 健康檢查回應
+    return "OK", 200
 
+# Webhook callback for LINE messages
 @app.route("/callback", methods=["POST"])
 def callback():
-    # Get request body as text
     body = request.get_data(as_text=True)
     print(f"Received Webhook request: Body: {body}")
 
@@ -87,7 +94,7 @@ def callback():
 
     return "OK"
 
-# 處理來自 LINE 的文字訊息事件
+# Handle text messages from LINE
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_id = event.source.user_id
@@ -99,7 +106,6 @@ def handle_message(event):
         return
 
     if user_message.startswith("加入我的最愛"):
-        # 假設格式為 "加入我的最愛:訊息內容"
         try:
             _, favorite_text = user_message.split(":", 1)
             add_to_favorites(event, user_id, favorite_text.strip())
@@ -110,7 +116,7 @@ def handle_message(event):
             )
         return
 
-    # 使用 ChatGPT 處理非關鍵字訊息
+    # Use ChatGPT to handle non-keyword messages
     print(f"Received non-keyword message: {user_message}, sending to ChatGPT.")
     try:
         response = openai.ChatCompletion.create(
@@ -123,25 +129,20 @@ def handle_message(event):
         reply_text = response.choices[0].message['content'].strip()
         print(f"ChatGPT response: {reply_text}")
 
-        # 使用 Flex Message 回應
+        # Use Flex Message to respond
         reply_message = create_flex_message(reply_text, user_id)
     except Exception as e:
         print(f"Error calling ChatGPT: {e}")
         reply_message = TextSendMessage(text="抱歉，我暫時無法處理您的請求。")
 
-    # 回覆給 LINE 使用者
     try:
-        line_bot_api.reply_message(
-            event.reply_token,
-            reply_message
-        )
+        line_bot_api.reply_message(event.reply_token, reply_message)
         print(f"Replied with message: {reply_message}")
     except Exception as e:
         print(f"Error sending reply: {e}")
 
-# 創建多頁 Flex Message，並加入 LIFF 連結
+# Create Flex Message with LIFF link
 def create_flex_message(reply_text, user_id):
-    """生成 Flex Message，包含回覆和加入我的最愛按鈕"""
     liff_url = f"https://liff.line.me/{os.getenv('LIFF_ID')}/favorites/{user_id}"
     bubble = {
         "type": "bubble",
@@ -184,82 +185,29 @@ def create_flex_message(reply_text, user_id):
     }
     return FlexSendMessage(alt_text="多頁訊息", contents=carousel)
 
-# 處理 Postback 事件
+# Handle Postback Events
 @handler.add(PostbackEvent)
 def handle_postback(event):
     data = event.postback.data
     params = dict(x.split('=') for x in data.split('&'))
-    
+
     action = params.get('action')
     user_id = params.get('user_id')
     message = params.get('message')
-    
+
+    print(f"Postback received: action={action}, user_id={user_id}, message={message}")
+
     if action == 'add_favorite':
-        # 將訊息新增到使用者的最愛清單中
         add_to_favorites(event, user_id, message)
 
-# 處理來自 LINE 的圖片訊息事件
-@handler.add(MessageEvent, message=ImageMessage)
-def handle_image(event):
-    print("Received image, processing with Google Cloud Vision API...")
-
-    # 下載圖片
-    message_content = line_bot_api.get_message_content(event.message.id)
-    image_path = "image.jpg"
-    with open(image_path, "wb") as f:
-        for chunk in message_content.iter_content():
-            f.write(chunk)
-
-    # 使用 Google Cloud Vision API 分析圖片
-    labels = analyze_image_with_google_vision(image_path)
-    if labels:
-        reply_text = f"識別到的食材：{', '.join(labels)}"
-    else:
-        reply_text = "無法識別圖片中的食材，請嘗試另一張圖片。"
-
-    # 使用 Flex Message 回應
-    reply_message = create_flex_message(reply_text, event.source.user_id)
-
-    # 回覆給 LINE 使用者
-    try:
-        line_bot_api.reply_message(
-            event.reply_token,
-            reply_message
-        )
-        print(f"Replied with message: {reply_text}")
-    except Exception as e:
-        print(f"Error sending reply: {e}")
-
-def analyze_image_with_google_vision(image_path):
-    """使用 Google Cloud Vision API 分析圖片並返回標籤"""
-    try:
-        with io.open(image_path, "rb") as image_file:
-            content = image_file.read()
-        image = vision.Image(content=content)
-
-        # 呼叫 Google Cloud Vision API 進行標籤檢測
-        response = vision_client.label_detection(image=image)
-        labels = response.label_annotations
-
-        # 提取標籤名稱（食材名稱）
-        result_labels = [label.description for label in labels]
-        print(f"識別結果：{result_labels}")
-        return result_labels
-    except Exception as e:
-        print(f"Error analyzing image: {e}")
-        return None
-
-# 新增到我的最愛
+# Add to favorites
 def add_to_favorites(event, user_id, message):
     save_to_favorites(user_id, message)
     reply_text = f"已將訊息新增至最愛：{message}"
-    line_bot_api.reply_message(
-        event.reply_token, 
-        TextSendMessage(text=reply_text)
-    )
+    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
     print(f"Added to favorites: {message}")
 
-# 顯示我的最愛
+# Show user's favorites
 def show_favorites(event, user_id):
     favorites = get_favorites(user_id)
     if favorites:
@@ -267,13 +215,10 @@ def show_favorites(event, user_id):
         reply_text = f"您的最愛：\n{fav_list}"
     else:
         reply_text = "您的最愛清單是空的。"
-    line_bot_api.reply_message(
-        event.reply_token,
-        TextSendMessage(text=reply_text)
-    )
+    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
     print(f"Displayed favorites for user {user_id}")
 
-# 顯示我的最愛的網頁
+# Show favorites via web
 @app.route("/favorites/<user_id>")
 def show_favorites_web(user_id):
     favorites = get_favorites(user_id)
@@ -282,7 +227,7 @@ def show_favorites_web(user_id):
     else:
         fav_list = []
     
-    # 回傳為 JSON 給 LIFF 應用
+    # Return JSON for LIFF application
     return jsonify({
         "user_id": user_id,
         "favorites": fav_list
