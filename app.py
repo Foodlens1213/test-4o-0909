@@ -34,29 +34,46 @@ vision_client = vision.ImageAnnotatorClient()
 
 # MySQL connection setup
 def get_db_connection():
-    return mysql.connector.connect(
-        host=os.getenv('MYSQL_HOST'),
-        user=os.getenv('MYSQL_USER'),
-        database=os.getenv('MYSQL_DATABASE')
-    )
+    try:
+        conn = mysql.connector.connect(
+            host=os.getenv('MYSQL_HOST'),
+            user=os.getenv('MYSQL_USER'),
+            database=os.getenv('MYSQL_DATABASE')
+        )
+        print("資料庫連線成功")
+        return conn
+    except mysql.connector.Error as err:
+        print(f"資料庫連線錯誤: {err}")
+        return None
 
 # Save to favorites
 def save_to_favorites(user_id, favorite_text):
     try:
         conn = get_db_connection()
+        if conn is None:
+            print("無法連接資料庫")
+            return
+
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO favorites (user_id, favorite) VALUES (%s, %s)", (user_id, favorite_text))
+        sql = "INSERT INTO favorites (user_id, favorite) VALUES (%s, %s)"
+        values = (user_id, favorite_text)
+        
+        cursor.execute(sql, values)
         conn.commit()
+        print(f"已成功儲存至資料庫: {user_id}, {favorite_text}")
+
         cursor.close()
         conn.close()
-        print(f"已成功儲存至資料庫: {user_id}, {favorite_text}")
     except mysql.connector.Error as err:
-        print(f"資料庫錯誤: {err}")
+        print(f"資料庫插入錯誤: {err}")
 
 # Fetch favorites
 def get_favorites(user_id):
     try:
         conn = get_db_connection()
+        if conn is None:
+            return []
+
         cursor = conn.cursor()
         cursor.execute("SELECT favorite FROM favorites WHERE user_id = %s", (user_id,))
         favorites = cursor.fetchall()
@@ -64,7 +81,7 @@ def get_favorites(user_id):
         conn.close()
         return favorites
     except mysql.connector.Error as err:
-        print(f"資料庫錯誤: {err}")
+        print(f"資料庫查詢錯誤: {err}")
         return []
 
 @app.route("/")
