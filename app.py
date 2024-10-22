@@ -70,7 +70,7 @@ def generate_image_description(image_path, text_input):
     response = requests.post(GEN_LANG_API_URL, headers=headers, json=payload)
     # 打印具體的錯誤訊息來調試
     if response.status_code == 400:
-    print(f"錯誤訊息: {response.json()}")
+        print(f"錯誤訊息: {response.json()}")
 
 # 這樣可以幫助你查看回應中具體的錯誤提示
     # 處理回應
