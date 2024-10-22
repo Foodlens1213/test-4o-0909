@@ -105,14 +105,12 @@ def handle_image_message(event):
         # 圖片描述的文字輸入
         text_input = "請描述這張圖片的內容。"
 
-        # 使用 Gemini 1.5 Pro 生成描述
+        # 先使用 Gemini 1.5 Pro 生成描述
         description = generate_image_description(image_path, text_input)
         print(f"圖片描述: {description}")
 
-        # 假設用戶發送了進一步的需求
+        # 然後使用 ChatGPT 進行進一步的處理
         user_request = "請詳細說明這個圖片描述。"
-
-        # 使用 ChatGPT 處理描述並生成回應
         final_response = process_description_with_chatgpt(description, user_request)
 
         # 回應結果給使用者
