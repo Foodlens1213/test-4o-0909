@@ -1,11 +1,11 @@
 from flask import Flask, request, abort
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, ImageMessage, TextSendMessage
+from linebot.models import MessageEvent, ImageMessage, TextSendMessage
 import os
-import openai
 import requests
 import base64
+import openai
 
 app = Flask(__name__)
 
@@ -14,10 +14,9 @@ line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 
 # 設定你的 OpenAI API 金鑰（ChatGPT）
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-openai.api_key = OPENAI_API_KEY
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# 從環境變數中獲取 Google Gemini API 金鑰
+# 使用環境變數中的 Google Gemini API 金鑰
 GEMINI_PRO_VISION_API_KEY = os.getenv("GEMINI_PRO_VISION_API_KEY")
 
 # 添加根路徑處理
@@ -33,27 +32,17 @@ def health_check():
 # 處理LINE Webhook的callback路徑
 @app.route("/callback", methods=["POST"])
 def callback():
+    # 獲取 LINE 請求標頭中的簽名
+    signature = request.headers['X-Line-Signature']
+    # 獲取請求中的消息
+    body = request.get_data(as_text=True)
+
     try:
-        # 獲取 LINE 請求標頭中的簽名
-        signature = request.headers['X-Line-Signature']
-        # 獲取請求中的消息
-        body = request.get_data(as_text=True)
-
-        print("收到來自 LINE 的 Webhook 請求：")
-        print(body)  # 打印出 Webhook 請求的內容
-
-        # 驗證來自 LINE 平台的請求
         handler.handle(body, signature)
-        print("成功處理 Webhook 請求")
-        
-        return 'OK', 200  # 確保返回 200 狀態碼給 LINE 平台
-
     except InvalidSignatureError:
-        print("簽名驗證失敗")
         abort(400)
-    except Exception as e:
-        print(f"處理請求時發生錯誤：{str(e)}")
-        abort(500)
+
+    return 'OK', 200  # 確保返回 200 狀態碼給 LINE 平台
 
 # 處理圖片訊息
 @handler.add(MessageEvent, message=ImageMessage)
