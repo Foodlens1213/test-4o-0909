@@ -46,33 +46,16 @@ def callback():
 
     return 'OK', 200  # 確保返回 200 狀態碼給 LINE 平台
 
-# 處理文字訊息
-@handler.add(MessageEvent, message=TextMessage)
-def handle_text_message(event):
-    user_message = event.message.text
-
-    # 使用 ChatGPT 生成對話回應
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": user_message}
-        ]
-    )
-
-    reply_message = response['choices'][0]['message']['content'].strip()
-    line_bot_api.reply_message(
-        event.reply_token,
-        TextSendMessage(text=reply_message)
-    )
-
 # 處理圖片訊息
 @handler.add(MessageEvent, message=ImageMessage)
 def handle_image_message(event):
     try:
-        print("收到圖片訊息")
+        print("收到圖片訊息，開始處理")
+
+        # 從 LINE 伺服器獲取圖片
         message_content = line_bot_api.get_message_content(event.message.id)
-        
+        print("圖片已從 LINE 伺服器獲取")
+
         # 保存圖片
         with open("image1.jpg", "wb") as f:
             for chunk in message_content.iter_content():
@@ -82,6 +65,7 @@ def handle_image_message(event):
         # 圖片進行 base64 編碼
         with open("image1.jpg", "rb") as image_file:
             encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
+        print("圖片已進行 base64 編碼")
 
         # 發送請求至 Google Gemini API
         endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key={GEMINI_PRO_VISION_API_KEY}"
@@ -101,6 +85,9 @@ def handle_image_message(event):
                 }
             ]
         }
+        print("發送請求到 Gemini API")
+
+        # 發送請求並檢查回應
         response = requests.post(endpoint, headers=headers, json=request_payload)
 
         if response.status_code == 200:
