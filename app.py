@@ -2,9 +2,11 @@
 from flask import Flask, request, abort, jsonify
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, TextSendMessage, PostbackEvent
+from linebot.models import MessageEvent, TextMessage, TextSendMessage, PostbackEvent, ImageMessage
 import os
-import mysql.connector
+import requests
+import base64
+import openai
 
 app = Flask(__name__)
 
@@ -12,143 +14,103 @@ app = Flask(__name__)
 line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 
-# MySQL connection
-def get_db_connection():
-    try:
-        conn = mysql.connector.connect(
-            host=os.getenv('MYSQL_HOST'),
-            user=os.getenv('MYSQL_USER'),
-            password=os.getenv('MYSQL_PASSWORD'),
-            database=os.getenv('MYSQL_DATABASE'),
-            port=os.getenv('MYSQL_PORT', 3306)  # 預設端口3306，若不同可修改
+# 設定你的 OpenAI API 金鑰（ChatGPT）
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+openai.api_key = OPENAI_API_KEY
+
+# 從環境變數中獲取 Google Gemini API 金鑰
+GEMINI_PRO_VISION_API_KEY = os.getenv("GEMINI_PRO_VISION_API_KEY")
+
+
+# 處理來自 LINE 的圖片訊息
+@handler.add(MessageEvent, message=ImageMessage)
+def handle_image_message(event):
+    # 從 LINE 伺服器獲取圖片
+    message_content = line_bot_api.get_message_content(event.message.id)
+    
+    # 保存圖片
+    with open("image1.jpg", "wb") as f:
+        for chunk in message_content.iter_content():
+            f.write(chunk)
+    
+    # 圖片進行 base64 編碼
+    with open("image1.jpg", "rb") as image_file:
+        encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
+
+    # 構建 API 請求
+    endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key={GEMINI_PRO_VISION_API_KEY}"
+
+    headers = {
+        'Content-Type': 'application/json'
+    }
+
+    request_payload = {
+        'contents': [
+            {
+                'parts': [
+                    {'text': '看到什麼'},
+                    {
+                        'inline_data': {
+                            'mime_type': 'image/jpeg',
+                            'data': encoded_image
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+
+    # 發送請求到 Gemini-Pro-Vision
+    response = requests.post(endpoint, headers=headers, json=request_payload)
+
+    # 處理回應
+    if response.status_code == 200:
+        response_json = response.json()
+
+        # 提取辨識結果
+        def get_value(data, key):
+            if isinstance(data, dict):
+                for k, v in data.items():
+                    if k == key:
+                        return v
+                    else:
+                        value = get_value(v, key)
+                        if value is not None:
+                            return value
+            elif isinstance(data, list):
+                for v in data:
+                    value = get_value(v, key)
+                    if value is not None:
+                        return value
+            return None
+
+        response_text = get_value(response_json, "text")
+
+        # 使用 ChatGPT 進一步處理圖片結果
+        chat_response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": f"圖片辨識結果: {response_text}"}
+            ]
         )
-        print("資料庫連線成功")
-        return conn
-    except mysql.connector.Error as err:
-        print(f"資料庫連線錯誤: {err}")
-        return None
 
-# Save to favorites
-def save_to_favorites(user_id, favorite_text):
-    conn = get_db_connection()
-    if conn is None:
-        print("無法連接到資料庫，無法儲存最愛")
-        return
-    
-    try:
-        cursor = conn.cursor()
-        sql = "INSERT INTO favorites (user_id, favorite) VALUES (%s, %s)"
-        values = (user_id, favorite_text)
-        cursor.execute(sql, values)
-        conn.commit()
-        print(f"已成功儲存至資料庫: {user_id}, {favorite_text}")
-    except mysql.connector.Error as err:
-        print(f"資料庫插入錯誤: {err}")
-    finally:
-        cursor.close()
-        conn.close()
+        chat_reply = chat_response['choices'][0]['message']['content'].strip()
 
-# 查詢最愛
-def get_favorites(user_id):
-    conn = get_db_connection()
-    if conn is None:
-        print("無法連接到資料庫，無法查詢最愛")
-        return []
-    
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT favorite FROM favorites WHERE user_id = %s", (user_id,))
-        favorites = cursor.fetchall()
-        print(f"查詢結果: {favorites}")
-        return [fav[0] for fav in favorites]
-    except mysql.connector.Error as err:
-        print(f"資料庫查詢錯誤: {err}")
-        return []
-    finally:
-        cursor.close()
-        conn.close()
-
-# 處理文字訊息
-@handler.add(MessageEvent, message=TextMessage)
-def handle_message(event):
-    user_id = event.source.user_id
-    user_message = event.message.text
-    print(f"收到訊息: {user_message}")
-
-    if user_message == "我的最愛":
-        favorites = get_favorites(user_id)
-        if favorites:
-            reply_text = "您的最愛：\n" + "\n".join(favorites)
-        else:
-            reply_text = "您的最愛清單是空的。"
+        # 回傳辨識結果給使用者
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text=reply_text)
+            TextSendMessage(text=chat_reply)
         )
-    elif user_message.startswith("加入我的最愛:"):
-        _, favorite_text = user_message.split(":", 1)
-        save_to_favorites(user_id, favorite_text.strip())
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text=f"已將訊息新增至最愛：{favorite_text.strip()}")
-        )
+
     else:
-        reply_text = "抱歉，我不明白您的訊息。"
+        # 印出錯誤詳情
+        print(f"API 請求失敗，狀態碼: {response.status_code}, 回應內容: {response.text}")
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text=reply_text)
+            TextSendMessage(text=f"API 請求失敗，狀態碼: {response.status_code}, 錯誤訊息: {response.text}")
         )
 
-# Postback handling
-@handler.add(PostbackEvent)
-def handle_postback(event):
-    data = event.postback.data
-    user_id = event.source.user_id
-    print(f"收到 Postback: {data}")
-
-    if data.startswith("action=add_favorite"):
-        _, favorite_text = data.split("&message=")
-        save_to_favorites(user_id, favorite_text)
-        line_bot_api.reply_message(
-            event.reply_token, 
-            TextSendMessage(text=f"已將訊息新增至最愛：{favorite_text}")
-        )
-
-# 顯示我的最愛的網頁
-@app.route("/favorites/<user_id>")
-def show_favorites_web(user_id):
-    favorites = get_favorites(user_id)
-    if favorites:
-        fav_list = [fav for fav in favorites]
-    else:
-        fav_list = []
-    
-    # 回傳為 JSON 給 LIFF 應用
-    return jsonify({
-        "user_id": user_id,
-        "favorites": fav_list
-    })
-
-# 健康檢查
-@app.route("/health", methods=["GET"])
-def health_check():
-    return "OK", 200
-
-# Webhook callback
-@app.route("/callback", methods=["POST"])
-def callback():
-    body = request.get_data(as_text=True)
-    print(f"Received Webhook request: Body: {body}")
-
-    try:
-        signature = request.headers["X-Line-Signature"]
-        handler.handle(body, signature)
-    except InvalidSignatureError:
-        print("Invalid Signature Error!")
-        abort(400)
-
-    return "OK"
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(debug=True)
