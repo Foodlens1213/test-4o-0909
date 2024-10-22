@@ -65,8 +65,8 @@ def handle_image_message(event):
             encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
         print("圖片已進行 base64 編碼")
 
-        # 發送請求至 Google Gemini API
-        endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key={GEMINI_PRO_VISION_API_KEY}"
+        # 使用 gemini-1.5-flash 模型發送請求至 Google Gemini API
+        endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_PRO_VISION_API_KEY}"
         headers = {'Content-Type': 'application/json'}
         request_payload = {
             'contents': [
@@ -83,7 +83,7 @@ def handle_image_message(event):
                 }
             ]
         }
-        print("發送請求到 Gemini API")
+        print("發送請求到 Gemini API (使用 gemini-1.5-flash 模型)")
 
         # 發送請求並檢查回應
         response = requests.post(endpoint, headers=headers, json=request_payload)
