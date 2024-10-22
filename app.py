@@ -16,15 +16,15 @@ handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 # OpenAI API 設定
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# Generative Language API 設定
-GEN_LANG_API_KEY = os.getenv("GEN_LANG_API_KEY")
-GEN_LANG_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEN_LANG_API_KEY}"
+# Gemini 1.5 Pro API 設定
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key={GEMINI_API_KEY}"
 
 # 添加根路徑處理
 @app.route("/", methods=["GET"])
 def index():
     return "Welcome to the Flask App!", 200
-    
+
 # Health check route
 @app.route("/health", methods=["GET"])
 def health_check():
@@ -43,7 +43,7 @@ def callback():
 
     return 'OK', 200
 
-# 使用 Generative Language API 生成描述
+# 使用 Gemini 1.5 Pro 生成圖片描述
 def generate_image_description(image_path, text_input):
     with open(image_path, "rb") as image_file:
         encoded_image = base64.b64encode(image_file.read()).decode("utf-8")
@@ -67,17 +67,16 @@ def generate_image_description(image_path, text_input):
 
     # 發送請求
     headers = {"Content-Type": "application/json"}
-    response = requests.post(GEN_LANG_API_URL, headers=headers, json=payload)
-    # 打印具體的錯誤訊息來調試
+    response = requests.post(GEMINI_API_URL, headers=headers, json=payload)
+
+    # 處理回應
     if response.status_code == 400:
         print(f"錯誤訊息: {response.json()}")
 
-# 這樣可以幫助你查看回應中具體的錯誤提示
-    # 處理回應
     if response.status_code == 200:
         return response.json().get("text", "無法生成描述")
     else:
-        return f"API 請求失敗，狀態碼: {response.status_code}"
+        return f"API 請求失敗，狀態碼: {response.status_code}, 回應內容: {response.text}"
 
 # 使用 ChatGPT 進行進一步處理
 def process_description_with_chatgpt(description, user_request):
@@ -106,7 +105,7 @@ def handle_image_message(event):
         # 圖片描述的文字輸入
         text_input = "請描述這張圖片的內容。"
 
-        # 使用 Generative Language API 生成描述
+        # 使用 Gemini 1.5 Pro 生成描述
         description = generate_image_description(image_path, text_input)
         print(f"圖片描述: {description}")
 
