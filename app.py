@@ -33,18 +33,27 @@ def health_check():
 # 處理LINE Webhook的callback路徑
 @app.route("/callback", methods=["POST"])
 def callback():
-    # 獲取 LINE 請求標頭中的簽名
-    signature = request.headers['X-Line-Signature']
-    # 獲取請求中的消息
-    body = request.get_data(as_text=True)
-
-    # 驗證來自 LINE 平台的請求
     try:
-        handler.handle(body, signature)
-    except InvalidSignatureError:
-        abort(400)
+        # 獲取 LINE 請求標頭中的簽名
+        signature = request.headers['X-Line-Signature']
+        # 獲取請求中的消息
+        body = request.get_data(as_text=True)
 
-    return 'OK', 200  # 確保返回 200 狀態碼給 LINE 平台
+        print("收到來自 LINE 的 Webhook 請求：")
+        print(body)  # 打印出 Webhook 請求的內容
+
+        # 驗證來自 LINE 平台的請求
+        handler.handle(body, signature)
+        print("成功處理 Webhook 請求")
+        
+        return 'OK', 200  # 確保返回 200 狀態碼給 LINE 平台
+
+    except InvalidSignatureError:
+        print("簽名驗證失敗")
+        abort(400)
+    except Exception as e:
+        print(f"處理請求時發生錯誤：{str(e)}")
+        abort(500)
 
 # 處理圖片訊息
 @handler.add(MessageEvent, message=ImageMessage)
