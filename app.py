@@ -22,6 +22,12 @@ openai.api_key = OPENAI_API_KEY
 GEMINI_PRO_VISION_API_KEY = os.getenv("GEMINI_PRO_VISION_API_KEY")
 
 
+# Health check route for Render
+@app.route("/health", methods=["GET"])
+def health_check():
+    return "OK", 200
+
+
 # 處理來自 LINE 的圖片訊息
 @handler.add(MessageEvent, message=ImageMessage)
 def handle_image_message(event):
