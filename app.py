@@ -15,14 +15,14 @@ load_dotenv()
 app = Flask(__name__)
 
 # 初始化 Firebase Admin SDK 和 Firestore
-google_credentials_content = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_CONTENT")
-if google_credentials_content:
-    credentials_path = "/tmp/google-credentials.json"
-    with open(credentials_path, "w") as f:
-        f.write(google_credentials_content)
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
+firebase_credentials_content = os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY")
+if firebase_credentials_content:
+    firebase_credentials_path = "/tmp/firebase-credentials.json"
+    with open(firebase_credentials_path, "w") as f:
+        f.write(firebase_credentials_content)
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = firebase_credentials_path
 
-    cred = credentials.Certificate(credentials_path)
+    cred = credentials.Certificate(firebase_credentials_path)
     firebase_admin.initialize_app(cred)
     db = firestore.client()
 else:
