@@ -156,7 +156,7 @@ def create_flex_message(recipe_text, video_url, user_id, dish_name):
                 "action": {
                     "type": "postback",
                     "label": "有沒有其他的食譜",
-                    "data": f"action=new_recipe&user_id={user_id}&ingredients={','.join(ingredients)}"  # 請求新的食譜
+                    "data": f"action=new_recipe&user_id={user_id}&ingredients={','.join(user_ingredients)}"  # 請求新的食譜
                 },
                 "color": "#474242",
                 "style": "primary"
