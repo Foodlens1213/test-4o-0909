@@ -27,6 +27,15 @@ if firebase_credentials_content:
     db = firestore.client()
 else:
     print("Firebase 金鑰未正確設置，請檢查環境變數")
+    
+# 初始化 Google Cloud Vision API 客戶端
+google_credentials_content = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_CONTENT")
+if google_credentials_content:
+    credentials_path = "/tmp/google-credentials.json"
+    with open(credentials_path, "w") as f:
+        f.write(google_credentials_content)
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
+vision_client = vision.ImageAnnotatorClient()
 
 # LINE Bot API 和 Webhook 設定
 line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
