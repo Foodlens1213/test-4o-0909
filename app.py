@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 import io
 import firebase_admin
 from firebase_admin import credentials, firestore
+from urllib.parse import quote
 
 # 載入環境變數
 load_dotenv()
@@ -105,13 +106,18 @@ def generate_recipe_response_with_video(user_message, ingredients):
             {"role": "system", "content": "你是一位專業的廚師助理，會根據用戶的需求生成食譜，並提供 YouTube 影片連結。"},
             {"role": "user", "content": prompt}
         ],
-        max_tokens=300
+        max_tokens=500
     )
     recipe = response.choices[0].message['content'].strip()
-    return recipe
+    # 假設 ChatGPT 會返回影片連結，將內容拆分為食譜和影片
+    recipe_parts = recipe.split("YouTube 影片連結: ")
+    recipe_text = recipe_parts[0].strip()  # 食譜內容
+    video_link = recipe_parts[1].strip() if len(recipe_parts) > 1 else ""  # 如果有影片連結，提取出來
+
+    return recipe_text, video_link
 
 # 建立多頁式訊息，新增「查看影片」按鈕
-def create_flex_message(recipe_text, video_url, user_id, dish_name):
+def create_flex_message(recipe_text, video_url, user_id, dish_name, ingredients):
     recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text, video_url)
 
     bubble = {
@@ -146,7 +152,7 @@ def create_flex_message(recipe_text, video_url, user_id, dish_name):
                 "action": {
                     "type": "uri",
                     "label": "查看影片",
-                    "uri": f"https://www.youtube.com/results?search_query={dish_name}+食譜"  # YouTube 搜尋影片
+                    "uri": video_url if video_url else f"https://www.youtube.com/results?search_query={quote(dish_name)}+食譜"
                 },
                 "color": "#474242",
                 "style": "primary"
@@ -156,7 +162,7 @@ def create_flex_message(recipe_text, video_url, user_id, dish_name):
                 "action": {
                     "type": "postback",
                     "label": "有沒有其他的食譜",
-                    "data": f"action=new_recipe&user_id={user_id}&ingredients={','.join(user_ingredients)}"  # 請求新的食譜
+                    "data": f"action=new_recipe&user_id={user_id}&ingredients={','.join(ingredients)}"  # 請求新的食譜
                 },
                 "color": "#474242",
                 "style": "primary"
