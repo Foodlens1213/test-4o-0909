@@ -161,7 +161,7 @@ def create_flex_message(recipe_text, video_url, user_id, dish_name):
                         "label": "查看影片",
                         "uri": video_url  # 這裡是 YouTube 影片連結
                     },
-                    "color": "#F6F3EB",
+                    "color": "#474242",
                     "style": "primary"
                 },
                 {
@@ -191,7 +191,7 @@ def create_flex_message(recipe_text, video_url, user_id, dish_name):
                         "label": "把這個食譜加入我的最愛",
                         "data": f"action=save_favorite&recipe_id={recipe_id}"
                     },
-                    "color": "#F6F3EB",
+                    "color": "#474242",
                     "style": "primary"
                 }
             ]
