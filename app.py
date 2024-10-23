@@ -66,13 +66,15 @@ def save_to_favorites(user_id, dish_name, recipe_text, video_link):
 # 儲存食譜並返回唯一的 recipe_id
 def save_recipe_to_db(user_id, dish_name, recipe_text, video_link):
     try:
-        doc_ref = db.collection('recipes').add({
+        # 'add' 返回一個元組，包含 (DocumentReference, Timestamp)
+        doc_ref_tuple = db.collection('recipes').add({
             'user_id': user_id,
             'dish': dish_name,
             'recipe': recipe_text,
             'link': video_link
         })
-        return doc_ref.id  # 返回 Firestore 自動生成的 ID
+        doc_ref = doc_ref_tuple[0]  # 取得 DocumentReference
+        return doc_ref.id  # 返回文檔 ID
     except Exception as e:
         print(f"Firestore 插入錯誤: {e}")
         return None
