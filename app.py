@@ -51,17 +51,21 @@ vision_client = vision.ImageAnnotatorClient()
 user_ingredients = {}
 
 # 儲存最愛食譜到 Firebase Firestore
-def save_to_favorites(user_id, dish_name, recipe_text, video_link):
+def save_recipe_to_db(user_id, dish_name, recipe_text, video_link):
     try:
-        db.collection('favorites').add({
+        # 自動生成一個新的 DocumentReference
+        doc_ref = db.collection('recipes').document()
+        doc_ref.set({
             'user_id': user_id,
             'dish': dish_name,
             'recipe': recipe_text,
             'link': video_link
         })
-        print(f"已成功儲存至 Firestore: {user_id}, {dish_name}, {recipe_text}, {video_link}")
+        return doc_ref.id  # 返回文檔 ID
     except Exception as e:
         print(f"Firestore 插入錯誤: {e}")
+        return None
+
 
 # 儲存食譜並返回唯一的 recipe_id
 def save_recipe_to_db(user_id, dish_name, recipe_text, video_link):
