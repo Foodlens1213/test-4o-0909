@@ -9,3 +9,4 @@ mysql-connector-python
 google-api-python-client
 pygame
 opencv-python
+firebase-admin
