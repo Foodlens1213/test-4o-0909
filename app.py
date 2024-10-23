@@ -70,15 +70,15 @@ def save_recipe_to_db(user_id, dish_name, recipe_text, video_link):
 # 儲存食譜並返回唯一的 recipe_id
 def save_recipe_to_db(user_id, dish_name, recipe_text, video_link):
     try:
-        # 'add' 返回一個元組，包含 (DocumentReference, Timestamp)
-        doc_ref_tuple = db.collection('recipes').add({
+        # 手動生成一個新的 DocumentReference，這樣可以提前獲取 ID
+        doc_ref = db.collection('recipes').document()  # 生成一個空的文檔引用
+        doc_ref.set({
             'user_id': user_id,
             'dish': dish_name,
             'recipe': recipe_text,
             'link': video_link
         })
-        doc_ref = doc_ref_tuple[0]  # 取得 DocumentReference
-        return doc_ref.id  # 返回文檔 ID
+        return doc_ref.id  # 返回生成的文檔 ID
     except Exception as e:
         print(f"Firestore 插入錯誤: {e}")
         return None
