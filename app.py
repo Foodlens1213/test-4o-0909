@@ -301,6 +301,10 @@ def callback():
     except InvalidSignatureError:
         print("無效的簽名錯誤!")
         abort(400)
+    except Exception as e:
+        # 捕捉並打印完整的錯誤訊息
+        print(f"發生錯誤: {str(e)}")
+        abort(500)  # 回傳 500 錯誤給客戶端
     return "OK"
 
 # 健康檢查路由
