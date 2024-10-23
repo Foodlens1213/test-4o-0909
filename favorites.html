@@ -1,46 +1,68 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的最愛</title>
-    <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
+    <title>我的最愛食譜</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js"></script>
 </head>
 <body>
     <h1>我的最愛食譜</h1>
-    <div id="favorite-list"></div>
+    <div id="recipes"></div>
 
     <script>
-        // 初始化 LIFF 應用
-        liff.init({ liffId: "YOUR_LIFF_ID" }).then(() => {
-            if (liff.isLoggedIn()) {
-                // 使用者已登入，取得使用者資料
-                liff.getProfile().then(profile => {
-                    const userId = profile.userId;
-                    // 發送 userId 到後端 API 來查詢使用者的收藏
-                    fetch(`/favorites/${userId}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            // 顯示使用者的收藏
-                            displayFavorites(data.favorites);
-                        });
-                });
-            } else {
-                liff.login();  // 未登入則提示登入
-            }
-        }).catch(err => {
-            console.error('LIFF 初始化錯誤:', err);
-        });
+        // Firebase 設定
+    const firebaseConfig = {
+    apiKey: "AIzaSyArYFpAk7EvMSTtbEt7rbMRb6cUEnGEqmU",
+    authDomain: "foodlens-d855d.firebaseapp.com",
+    projectId: "foodlens-d855d",
+    storageBucket: "foodlens-d855d.appspot.com",
+    messagingSenderId: "615735131157",
+    appId: "1:615735131157:web:bcaf7a030b802c21d2221c",
+    measurementId: "G-Z4HZ6MSVD7"
+  };
 
-        // 顯示收藏
-        function displayFavorites(favorites) {
-            const favoriteList = document.getElementById('favorite-list');
-            favorites.forEach(fav => {
-                const favItem = document.createElement('div');
-                favItem.innerHTML = `<h3>${fav.dish}</h3><p>${fav.recipe}</p><a href="${fav.link}">觀看影片</a>`;
-                favoriteList.appendChild(favItem);
-            });
-        }
+        // 初始化 Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        // 這裡假設用戶已經登入，如果您使用 LINE LIFF，需要處理 LIFF 登入邏輯
+        auth.signInAnonymously().then(() => {
+            const user = auth.currentUser;
+            const userId = user.uid;
+
+            // 從 Firestore 中讀取收藏的食譜
+            db.collection('favorites').where('user_id', '==', userId)
+                .get()
+                .then((querySnapshot) => {
+                    const recipesDiv = document.getElementById('recipes');
+                    if (querySnapshot.empty) {
+                        recipesDiv.innerHTML = "<p>您還沒有收藏任何食譜。</p>";
+                    } else {
+                        querySnapshot.forEach((doc) => {
+                            const recipe = doc.data();
+                            const recipeHtml = `
+                                <div>
+                                    <h3>${recipe.dish}</h3>
+                                    <p>${recipe.recipe}</p>
+                                    <a href="${recipe.link}" target="_blank">觀看影片</a>
+                                </div>
+                                <hr>
+                            `;
+                            recipesDiv.innerHTML += recipeHtml;
+                        });
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error getting recipes: ", error);
+                });
+        }).catch((error) => {
+            console.error("Authentication error: ", error);
+        });
     </script>
 </body>
 </html>
