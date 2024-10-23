@@ -285,10 +285,32 @@ def handle_postback(event):
             TextSendMessage(text="已將此食譜加入您的最愛。")
         )
 
-# LIFF 健康檢查路由
-@app.route("/health", methods=["GET"])
-def health_check():
-    return "OK", 200
+# 處理文字訊息，並生成多頁式食譜回覆
+@handler.add(MessageEvent, message=TextMessage)
+def handle_message(event):
+    user_id = event.source.user_id
+    user_message = event.message.text
+    
+    # 假設使用者回答了關於料理需求的問題
+    if "份" in user_message or "人" in user_message:
+        ingredients = user_ingredients.get(user_id, None)
+        if ingredients:
+            # 根據使用者的需求和先前辨識的食材生成食譜
+            recipe_response = generate_recipe_response_with_video(user_message, ingredients)
+            video_url = "https://www.youtube.com/results?search_query=recipe"  # 替換為 ChatGPT 生成的影片連結
+            flex_message = create_flex_message(recipe_response, video_url, user_id, "焗烤料理")  # 假設 dish 名稱為 "焗烤料理"
+            line_bot_api.reply_message(event.reply_token, flex_message)
+        else:
+            # 如果沒有已辨識的食材，回應提示使用者上傳圖片
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="請先上傳圖片來辨識食材。")
+            )
+    else:
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text="請告訴我您想要做什麼料理及份數。")
+        )
 
 # Webhook callback 處理 LINE 訊息
 @app.route("/callback", methods=["POST"])
@@ -302,6 +324,11 @@ def callback():
         print("無效的簽名錯誤!")
         abort(400)
     return "OK"
+
+# 健康檢查路由
+@app.route("/health", methods=["GET"])
+def health_check():
+    return "OK", 200
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
