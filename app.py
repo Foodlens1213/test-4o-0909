@@ -67,43 +67,21 @@ def save_to_favorites(user_id, dish_name, recipe_text, video_link):
         cursor.close()
         conn.close()
 
-# 查詢指定使用者的最愛食譜
-@app.route("/favorites/<user_id>")
-def show_favorites_web(user_id):
-    conn = get_db_connection()
-    if conn is None:
-        return jsonify({"error": "資料庫連線失敗"}), 500
-
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT dish, recipe, link FROM favorites WHERE user_id = %s", (user_id,))
-        favorites = cursor.fetchall()
-        fav_list = [{"dish": fav[0], "recipe": fav[1], "link": fav[2]} for fav in favorites]
-
-        return jsonify({
-            "user_id": user_id,
-            "favorites": fav_list
-        })
-    except mysql.connector.Error as err:
-        return jsonify({"error": f"資料庫查詢錯誤: {err}"}), 500
-    finally:
-        cursor.close()
-        conn.close()
-
-# ChatGPT 根據使用者需求和食材生成食譜回覆，並附上影片連結
+# ChatGPT 根據使用者需求和食材生成食譜回覆，並限制在 300 字內
 def generate_recipe_response_with_video(user_message, ingredients):
-    prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請根據這些食材生成一個適合的食譜，並附上一個相關的 YouTube 食譜影片連結。"
+    prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請根據這些食材生成一個適合的食譜，字數限制在300字以內，並附上一個相關的 YouTube 食譜影片連結。"
     response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=[
             {"role": "system", "content": "你是一位專業的廚師助理，會根據用戶的需求生成食譜，並提供 YouTube 影片連結。"},
             {"role": "user", "content": prompt}
-        ]
+        ],
+        max_tokens=300  # 限制 ChatGPT 回應的字數
     )
     recipe = response.choices[0].message['content'].strip()
     return recipe
 
-# 建立多頁式訊息
+# 建立多頁式訊息，新增「查看影片」按鈕
 def create_flex_message(recipe_text, video_url, user_id, dish_name):
     bubble = {
         "type": "bubble",
@@ -124,16 +102,6 @@ def create_flex_message(recipe_text, video_url, user_id, dish_name):
                     "wrap": True,
                     "margin": "md",
                     "size": "sm"
-                },
-                {
-                    "type": "button",
-                    "action": {
-                        "type": "uri",
-                        "label": "觀看食譜影片",
-                        "uri": video_url
-                    },
-                    "style": "link",
-                    "margin": "md"
                 }
             ]
         },
@@ -145,9 +113,19 @@ def create_flex_message(recipe_text, video_url, user_id, dish_name):
                 {
                     "type": "button",
                     "action": {
+                        "type": "uri",
+                        "label": "查看影片",
+                        "uri": video_url  # 這裡是 YouTube 影片連結
+                    },
+                    "color": "#FF4500",
+                    "style": "primary"
+                },
+                {
+                    "type": "button",
+                    "action": {
                         "type": "postback",
                         "label": "有沒有其他的食譜",
-                        "data": f"action=new_recipe&user_id={user_id}&ingredients={recipe_text}"
+                        "data": f"action=new_recipe&user_id={user_id}&recipe_text={recipe_text}"
                     },
                     "color": "#1DB446",
                     "style": "primary"
@@ -167,7 +145,7 @@ def create_flex_message(recipe_text, video_url, user_id, dish_name):
                     "action": {
                         "type": "postback",
                         "label": "把這個食譜加入我的最愛",
-                        "data": f"action=save_favorite&user_id={user_id}&dish={dish_name}&recipe={recipe_text}&link={video_url}"
+                        "data": f"action=save_favorite&user_id={user_id}&dish={dish_name}&recipe_text={recipe_text}&video_link={video_url}"
                     },
                     "color": "#0000FF",
                     "style": "primary"
@@ -274,9 +252,9 @@ def handle_postback(event):
         )
     elif action == 'save_favorite':
         # 從 postback 參數中取得食譜相關資訊
-        recipe_text = params.get('recipe')
+        recipe_text = params.get('recipe_text')
         dish_name = params.get('dish')
-        video_link = params.get('link')
+        video_link = params.get('video_link')
 
         # 將食譜存入資料庫
         save_to_favorites(user_id, dish_name, recipe_text, video_link)
