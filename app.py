@@ -1,7 +1,7 @@
-from flask import Flask, request, abort, jsonify, render_template
+from flask import Flask, request, abort, jsonify
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage, PostbackEvent
+from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage
 import openai
 import os
 from google.cloud import vision
@@ -29,61 +29,8 @@ if google_credentials_content:
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
 vision_client = vision.ImageAnnotatorClient()
 
-# MySQL 資料庫連線設定
-def get_db_connection():
-    try:
-        conn = mysql.connector.connect(
-            host=os.getenv('MYSQL_HOST'),
-            user=os.getenv('MYSQL_USER'),
-            password=os.getenv('MYSQL_PASSWORD'),
-            database=os.getenv('MYSQL_DATABASE'),
-            port=os.getenv('MYSQL_PORT', 3306)
-        )
-        print("資料庫連線成功")
-        return conn
-    except mysql.connector.Error as err:
-        print(f"資料庫連線錯誤: {err}")
-        return None
-
-# 儲存最愛
-def save_to_favorites(user_id, favorite_text):
-    conn = get_db_connection()
-    if conn is None:
-        print("無法連接到資料庫，無法儲存最愛")
-        return
-    
-    try:
-        cursor = conn.cursor()
-        sql = "INSERT INTO favorites (user_id, favorite) VALUES (%s, %s)"
-        values = (user_id, favorite_text)
-        cursor.execute(sql, values)
-        conn.commit()
-        print(f"已成功儲存至資料庫: {user_id}, {favorite_text}")
-    except mysql.connector.Error as err:
-        print(f"資料庫插入錯誤: {err}")
-    finally:
-        cursor.close()
-        conn.close()
-
-# 查詢最愛
-def get_favorites(user_id):
-    conn = get_db_connection()
-    if conn is None:
-        print("無法連接到資料庫，無法查詢最愛")
-        return []
-    
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT favorite FROM favorites WHERE user_id = %s", (user_id,))
-        favorites = cursor.fetchall()
-        print(f"查詢結果: {favorites}")
-        return [fav[0] for fav in favorites]
-    except mysql.connector.Error as err:
-        print(f"資料庫查詢錯誤: {err}")
-        return []
-    finally:
-        cursor.close()
-        conn.close()
+# 儲存處理後的食材資料（供後續使用）
+user_ingredients = {}
 
 # 處理圖片訊息，進行 Google Cloud Vision 辨識
 @handler.add(MessageEvent, message=ImageMessage)
@@ -102,6 +49,8 @@ def handle_image_message(event):
         
         # 將辨識出的文字轉換成繁體中文並過濾非食材詞彙
         processed_text = translate_and_filter_ingredients(detected_text)
+        user_id = event.source.user_id
+        user_ingredients[user_id] = processed_text  # 暫存過濾後的食材
         print(f"處理後的食材文字: {processed_text}")
         
         # 問使用者料理問題
@@ -135,7 +84,7 @@ def ask_user_for_recipe_info():
     # 問題將詢問使用者他們的料理需求
     return "您今天想做甚麼樣的料理？幾人份？"
 
-# 處理文字訊息
+# 處理使用者對料理需求的回覆
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_id = event.source.user_id
@@ -154,21 +103,33 @@ def handle_message(event):
                 TextSendMessage(text="請使用格式 '加入我的最愛:訊息內容'")
             )
     else:
-        # 其他訊息將由 ChatGPT 處理
-        try:
-            response = openai.ChatCompletion.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": user_message},
-                ]
+        # 取得之前處理好的食材資料，並生成回應
+        if user_id in user_ingredients:
+            ingredients = user_ingredients[user_id]
+            # 呼叫 ChatGPT 生成食譜並依照使用者需求給回覆
+            recipe_response = generate_recipe_response(user_message, ingredients)
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text=recipe_response)
             )
-            reply_text = response.choices[0].message['content'].strip()
-            print(f"ChatGPT 回覆: {reply_text}")
-            line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
-        except Exception as e:
-            print(f"呼叫 ChatGPT 出錯: {e}")
-            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="抱歉，我暫時無法處理您的請求。"))
+        else:
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="請先上傳圖片來辨識食材。")
+            )
+
+# ChatGPT 根據使用者需求和食材生成食譜回覆
+def generate_recipe_response(user_message, ingredients):
+    prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請根據這些食材生成一個適合的食譜。"
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "你是一位專業的廚師助理，會根據用戶的需求生成食譜。"},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    recipe = response.choices[0].message['content'].strip()
+    return recipe
 
 # Webhook callback 處理 LINE 訊息
 @app.route("/callback", methods=["POST"])
@@ -187,21 +148,6 @@ def callback():
 @app.route("/health", methods=["GET"])
 def health_check():
     return "OK", 200
-
-# 顯示我的最愛的網頁
-@app.route("/favorites/<user_id>")
-def show_favorites_web(user_id):
-    favorites = get_favorites(user_id)
-    if favorites:
-        fav_list = [fav for fav in favorites]
-    else:
-        fav_list = []
-
-    # 回傳為 JSON 給 LIFF 應用
-    return jsonify({
-        "user_id": user_id,
-        "favorites": fav_list
-    })
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
