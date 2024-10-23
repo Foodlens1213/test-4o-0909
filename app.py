@@ -36,9 +36,10 @@ user_ingredients = {}
 def get_db_connection():
     try:
         conn = mysql.connector.connect(
-            host=os.getenv('MYSQL_HOST'),
-            user=os.getenv('MYSQL_USER'),
-            database=os.getenv('MYSQL_DATABASE'),
+            host=os.getenv('MYSQL_HOST', '127.0.0.1'),
+            user=os.getenv('MYSQL_USER', 'root'),
+            password=os.getenv('MYSQL_PASSWORD', ''),
+            database=os.getenv('MYSQL_DATABASE', 'line_bot'),
             port=os.getenv('MYSQL_PORT', 3306)
         )
         return conn
