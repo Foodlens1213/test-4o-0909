@@ -115,75 +115,76 @@ def create_flex_message(recipe_text, video_url, user_id, dish_name):
     recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text, video_url)
 
     bubble = {
-        "type": "bubble",
-        "body": {
-            "type": "box",
-            "layout": "vertical",
-            "contents": [
-                {
-                    "type": "text",
-                    "text": "您的食譜：",
-                    "wrap": True,
-                    "weight": "bold",
-                    "size": "xl"
+    "type": "bubble",
+    "body": {
+        "type": "box",
+        "layout": "vertical",
+        "contents": [
+            {
+                "type": "text",
+                "text": "您的食譜：",
+                "wrap": True,
+                "weight": "bold",
+                "size": "xl"
+            },
+            {
+                "type": "text",
+                "text": recipe_text,
+                "wrap": True,
+                "margin": "md",
+                "size": "sm"
+            }
+        ]
+    },
+    "footer": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "sm",
+        "contents": [
+            {
+                "type": "button",
+                "action": {
+                    "type": "uri",
+                    "label": "查看影片",
+                    "uri": f"https://www.youtube.com/results?search_query={dish_name}+食譜"  # YouTube 搜尋影片
                 },
-                {
-                    "type": "text",
-                    "text": recipe_text,
-                    "wrap": True,
-                    "margin": "md",
-                    "size": "sm"
-                }
-            ]
-        },
-        "footer": {
-            "type": "box",
-            "layout": "vertical",
-            "spacing": "sm",
-            "contents": [
-                {
-                    "type": "button",
-                    "action": {
-                        "type": "uri",
-                        "label": "查看影片",
-                        "uri": video_url
-                    },
-                    "color": "#474242",
-                    "style": "primary"
+                "color": "#474242",
+                "style": "primary"
+            },
+            {
+                "type": "button",
+                "action": {
+                    "type": "postback",
+                    "label": "有沒有其他的食譜",
+                    "data": f"action=new_recipe&user_id={user_id}&ingredients={','.join(ingredients)}"  # 請求新的食譜
                 },
-                {
-                    "type": "button",
-                    "action": {
-                        "type": "postback",
-                        "label": "有沒有其他的食譜",
-                        "data": f"action=new_recipe&user_id={user_id}&recipe_id={recipe_id}"
-                    },
-                    "color": "#474242",
-                    "style": "primary"
+                "color": "#474242",
+                "style": "primary"
+            },
+            {
+                "type": "button",
+                "action": {
+                    "type": "postback",
+                    "label": "我想辨識新的一張圖片",
+                    "data": "action=new_image"  # 辨識新圖片
                 },
-                {
-                    "type": "button",
-                    "action": {
-                        "type": "postback",
-                        "label": "我想辨識新的一張圖片",
-                        "data": "action=new_image"
-                    },
-                    "color": "#474242",
-                    "style": "primary"
+                "color": "#474242",
+                "style": "primary"
+            },
+            {
+                "type": "button",
+                "action": {
+                    "type": "postback",
+                    "label": "把這個食譜加入我的最愛",
+                    "data": f"action=save_favorite&recipe_id={recipe_id}"  # 儲存到最愛
                 },
-                {
-                    "type": "button",
-                    "action": {
-                        "type": "postback",
-                        "label": "把這個食譜加入我的最愛",
-                        "data": f"action=save_favorite&recipe_id={recipe_id}"
-                    },
-                    "color": "#474242",
-                    "style": "primary"
-                }
-            ]
-        }
+                "color": "#474242",
+                "style": "primary"
+            }
+        ]
     }
+}
+
 
     carousel = {
         "type": "carousel",
