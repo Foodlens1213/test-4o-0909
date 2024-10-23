@@ -1,7 +1,7 @@
 from flask import Flask, request, abort, jsonify, render_template
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage, FlexSendMessage, PostbackAction, PostbackEvent
+from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage, PostbackEvent
 import openai
 import os
 from google.cloud import vision
@@ -85,8 +85,9 @@ def get_favorites(user_id):
         cursor.close()
         conn.close()
 
-# Google Cloud Vision 辨識圖片中的文字
-def process_image_message(event):
+# 處理圖片訊息，進行 Google Cloud Vision 辨識
+@handler.add(MessageEvent, message=ImageMessage)
+def handle_image_message(event):
     message_id = event.message.id
     message_content = line_bot_api.get_message_content(message_id)
     
