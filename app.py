@@ -38,8 +38,8 @@ def get_db_connection():
         conn = mysql.connector.connect(
             host=os.getenv('MYSQL_HOST', '127.0.0.1'),
             user=os.getenv('MYSQL_USER', 'root'),
-            password=os.getenv('MYSQL_PASSWORD', ''),
-            database=os.getenv('MYSQL_DATABASE', 'line_bot'),
+            password=os.getenv('MYSQL_PASSWORD', '920227'),
+            database=os.getenv('MYSQL_DATABASE', 'linebot'),
             port=os.getenv('MYSQL_PORT', 3306)
         )
         return conn
