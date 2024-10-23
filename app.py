@@ -171,7 +171,7 @@ def create_flex_message(recipe_text, video_url, user_id, dish_name):
                         "label": "有沒有其他的食譜",
                         "data": f"action=new_recipe&user_id={user_id}&recipe_id={recipe_id}"
                     },
-                    "color": "##474242",
+                    "color": "#474242",
                     "style": "primary"
                 },
                 {
@@ -191,7 +191,7 @@ def create_flex_message(recipe_text, video_url, user_id, dish_name):
                         "label": "把這個食譜加入我的最愛",
                         "data": f"action=save_favorite&recipe_id={recipe_id}"
                     },
-                    "color": "#0000FF",
+                    "color": "#F6F3EB",
                     "style": "primary"
                 }
             ]
