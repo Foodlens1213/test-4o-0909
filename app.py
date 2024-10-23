@@ -50,15 +50,22 @@ def handle_image_message(event):
         # 將辨識出的文字轉換成繁體中文並過濾非食材詞彙
         processed_text = translate_and_filter_ingredients(detected_text)
         user_id = event.source.user_id
-        user_ingredients[user_id] = processed_text  # 暫存過濾後的食材
-        print(f"處理後的食材文字: {processed_text}")
-        
-        # 問使用者料理問題
-        question_response = ask_user_for_recipe_info()
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text=question_response)
-        )
+        if processed_text:  # 確保有過濾到食材內容
+            user_ingredients[user_id] = processed_text  # 儲存過濾後的食材
+            print(f"處理後的食材文字: {processed_text}")
+            
+            # 問使用者料理問題
+            question_response = ask_user_for_recipe_info()
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text=question_response)
+            )
+        else:
+            # 如果未能提取到食材，提醒使用者重新上傳圖片
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="未能識別出任何食材，請嘗試上傳另一張清晰的圖片。")
+            )
     else:
         line_bot_api.reply_message(
             event.reply_token,
@@ -103,8 +110,8 @@ def handle_message(event):
                 TextSendMessage(text="請使用格式 '加入我的最愛:訊息內容'")
             )
     else:
-        # 取得之前處理好的食材資料，並生成回應
-        if user_id in user_ingredients:
+        # 取得之前處理好的食材資料，並生成對應回應
+        if user_id in user_ingredients and user_ingredients[user_id]:
             ingredients = user_ingredients[user_id]
             # 呼叫 ChatGPT 生成食譜並依照使用者需求給回覆
             recipe_response = generate_recipe_response(user_message, ingredients)
@@ -113,9 +120,10 @@ def handle_message(event):
                 TextSendMessage(text=recipe_response)
             )
         else:
+            # 如果沒有儲存食材，提醒使用者上傳圖片來識別食材
             line_bot_api.reply_message(
                 event.reply_token,
-                TextSendMessage(text="請先上傳圖片來辨識食材。")
+                TextSendMessage(text="抱歉，由於您沒有提供可以使用的食材清單，我無法為您提供確切的食譜。請上傳圖片以識別食材。")
             )
 
 # ChatGPT 根據使用者需求和食材生成食譜回覆
