@@ -67,6 +67,48 @@ def save_to_favorites(user_id, dish_name, recipe_text, video_link):
         cursor.close()
         conn.close()
 
+# 儲存食譜並返回唯一的 recipe_id
+def save_recipe_to_db(user_id, dish_name, recipe_text, video_link):
+    conn = get_db_connection()
+    if conn is None:
+        print("無法連接到資料庫，無法儲存食譜")
+        return None
+    
+    try:
+        cursor = conn.cursor()
+        sql = "INSERT INTO recipes (user_id, dish, recipe, link) VALUES (%s, %s, %s, %s)"
+        values = (user_id, dish_name, recipe_text, video_link)
+        cursor.execute(sql, values)
+        conn.commit()
+
+        recipe_id = cursor.lastrowid  # 取得自動生成的 ID
+        return recipe_id
+    except mysql.connector.Error as err:
+        print(f"資料庫插入錯誤: {err}")
+        return None
+    finally:
+        cursor.close()
+        conn.close()
+
+# 從資料庫根據 recipe_id 查詢食譜
+def get_recipe_from_db(recipe_id):
+    conn = get_db_connection()
+    if conn is None:
+        print("無法連接到資料庫")
+        return None
+    
+    try:
+        cursor = conn.cursor(dictionary=True)  # 查詢結果為字典格式
+        cursor.execute("SELECT dish, recipe, link FROM recipes WHERE id = %s", (recipe_id,))
+        recipe = cursor.fetchone()
+        return recipe
+    except mysql.connector.Error as err:
+        print(f"資料庫查詢錯誤: {err}")
+        return None
+    finally:
+        cursor.close()
+        conn.close()
+
 # ChatGPT 根據使用者需求和食材生成食譜回覆，並限制在 300 字內
 def generate_recipe_response_with_video(user_message, ingredients):
     prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請根據這些食材生成一個適合的食譜，字數限制在300字以內，並附上一個相關的 YouTube 食譜影片連結。"
@@ -83,6 +125,9 @@ def generate_recipe_response_with_video(user_message, ingredients):
 
 # 建立多頁式訊息，新增「查看影片」按鈕
 def create_flex_message(recipe_text, video_url, user_id, dish_name):
+    # 假設您已將食譜儲存到資料庫，並返回 recipe_id
+    recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text, video_url)  # 儲存食譜到資料庫
+
     bubble = {
         "type": "bubble",
         "body": {
@@ -125,7 +170,7 @@ def create_flex_message(recipe_text, video_url, user_id, dish_name):
                     "action": {
                         "type": "postback",
                         "label": "有沒有其他的食譜",
-                        "data": f"action=new_recipe&user_id={user_id}&recipe_text={recipe_text}"
+                        "data": f"action=new_recipe&user_id={user_id}&recipe_id={recipe_id}"
                     },
                     "color": "#1DB446",
                     "style": "primary"
@@ -145,7 +190,7 @@ def create_flex_message(recipe_text, video_url, user_id, dish_name):
                     "action": {
                         "type": "postback",
                         "label": "把這個食譜加入我的最愛",
-                        "data": f"action=save_favorite&user_id={user_id}&dish={dish_name}&recipe_text={recipe_text}&video_link={video_url}"
+                        "data": f"action=save_favorite&recipe_id={recipe_id}"
                     },
                     "color": "#0000FF",
                     "style": "primary"
@@ -239,8 +284,9 @@ def handle_postback(event):
     user_id = params.get('user_id')
 
     if action == 'new_recipe':
-        ingredients = params.get('ingredients')
-        new_recipe = generate_recipe_response_with_video("新的食譜", ingredients)
+        recipe_id = params.get('recipe_id')
+        recipe = get_recipe_from_db(recipe_id)  # 從資料庫查詢食譜
+        new_recipe = generate_recipe_response_with_video("新的食譜", recipe["recipe"])
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text=f"新的食譜：\n{new_recipe}")
@@ -251,13 +297,9 @@ def handle_postback(event):
             TextSendMessage(text="請上傳一張新圖片來辨識食材。")
         )
     elif action == 'save_favorite':
-        # 從 postback 參數中取得食譜相關資訊
-        recipe_text = params.get('recipe_text')
-        dish_name = params.get('dish')
-        video_link = params.get('video_link')
-
-        # 將食譜存入資料庫
-        save_to_favorites(user_id, dish_name, recipe_text, video_link)
+        recipe_id = params.get('recipe_id')
+        recipe = get_recipe_from_db(recipe_id)  # 從資料庫查詢食譜
+        save_to_favorites(user_id, recipe['dish'], recipe['recipe'], recipe['link'])
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text="已將此食譜加入您的最愛。")
