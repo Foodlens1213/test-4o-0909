@@ -7,11 +7,26 @@ import os
 from google.cloud import vision
 from dotenv import load_dotenv
 import io
-import mysql.connector
+import firebase_admin
+from firebase_admin import credentials, firestore
 
 # 載入環境變數
 load_dotenv()
 app = Flask(__name__)
+
+# 初始化 Firebase Admin SDK 和 Firestore
+google_credentials_content = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_CONTENT")
+if google_credentials_content:
+    credentials_path = "/tmp/google-credentials.json"
+    with open(credentials_path, "w") as f:
+        f.write(google_credentials_content)
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
+
+    cred = credentials.Certificate(credentials_path)
+    firebase_admin.initialize_app(cred)
+    db = firestore.client()
+else:
+    print("Firebase 金鑰未正確設置，請檢查環境變數")
 
 # LINE Bot API 和 Webhook 設定
 line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
@@ -21,93 +36,50 @@ handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # 初始化 Google Cloud Vision API 客戶端
-google_credentials_content = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_CONTENT")
-if google_credentials_content:
-    credentials_path = "/tmp/google-credentials.json"
-    with open(credentials_path, "w") as f:
-        f.write(google_credentials_content)
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
 vision_client = vision.ImageAnnotatorClient()
 
 # 儲存處理後的食材資料（供後續使用）
 user_ingredients = {}
 
-# MySQL 資料庫連線設定
-def get_db_connection():
-    try:
-        conn = mysql.connector.connect(
-            host=os.getenv('MYSQL_HOST', '127.0.0.1'),
-            user=os.getenv('MYSQL_USER', 'root'),
-            password=os.getenv('MYSQL_PASSWORD', '920227'),
-            database=os.getenv('MYSQL_DATABASE', 'linebot'),
-            port=os.getenv('MYSQL_PORT', 3306)
-        )
-        return conn
-    except mysql.connector.Error as err:
-        print(f"資料庫連線錯誤: {err}")
-        return None
-
-# 儲存最愛食譜
+# 儲存最愛食譜到 Firebase Firestore
 def save_to_favorites(user_id, dish_name, recipe_text, video_link):
-    conn = get_db_connection()
-    if conn is None:
-        print("無法連接到資料庫，無法儲存最愛")
-        return
-    
     try:
-        cursor = conn.cursor()
-        sql = "INSERT INTO favorites (user_id, dish, recipe, link) VALUES (%s, %s, %s, %s)"
-        values = (user_id, dish_name, recipe_text, video_link)
-        cursor.execute(sql, values)
-        conn.commit()
-        print(f"已成功儲存至資料庫: {user_id}, {dish_name}, {recipe_text}, {video_link}")
-    except mysql.connector.Error as err:
-        print(f"資料庫插入錯誤: {err}")
-    finally:
-        cursor.close()
-        conn.close()
+        db.collection('favorites').add({
+            'user_id': user_id,
+            'dish': dish_name,
+            'recipe': recipe_text,
+            'link': video_link
+        })
+        print(f"已成功儲存至 Firestore: {user_id}, {dish_name}, {recipe_text}, {video_link}")
+    except Exception as e:
+        print(f"Firestore 插入錯誤: {e}")
 
 # 儲存食譜並返回唯一的 recipe_id
 def save_recipe_to_db(user_id, dish_name, recipe_text, video_link):
-    conn = get_db_connection()
-    if conn is None:
-        print("無法連接到資料庫，無法儲存食譜")
-        return None
-    
     try:
-        cursor = conn.cursor()
-        sql = "INSERT INTO recipes (user_id, dish, recipe, link) VALUES (%s, %s, %s, %s)"
-        values = (user_id, dish_name, recipe_text, video_link)
-        cursor.execute(sql, values)
-        conn.commit()
-
-        recipe_id = cursor.lastrowid  # 取得自動生成的 ID
-        return recipe_id
-    except mysql.connector.Error as err:
-        print(f"資料庫插入錯誤: {err}")
+        doc_ref = db.collection('recipes').add({
+            'user_id': user_id,
+            'dish': dish_name,
+            'recipe': recipe_text,
+            'link': video_link
+        })
+        return doc_ref.id  # 返回 Firestore 自動生成的 ID
+    except Exception as e:
+        print(f"Firestore 插入錯誤: {e}")
         return None
-    finally:
-        cursor.close()
-        conn.close()
 
-# 從資料庫根據 recipe_id 查詢食譜
+# 從 Firebase Firestore 根據 recipe_id 查詢食譜
 def get_recipe_from_db(recipe_id):
-    conn = get_db_connection()
-    if conn is None:
-        print("無法連接到資料庫")
-        return None
-    
     try:
-        cursor = conn.cursor(dictionary=True)  # 查詢結果為字典格式
-        cursor.execute("SELECT dish, recipe, link FROM recipes WHERE id = %s", (recipe_id,))
-        recipe = cursor.fetchone()
-        return recipe
-    except mysql.connector.Error as err:
-        print(f"資料庫查詢錯誤: {err}")
+        recipe_doc = db.collection('recipes').document(recipe_id).get()
+        if recipe_doc.exists:
+            return recipe_doc.to_dict()
+        else:
+            print("找不到對應的食譜")
+            return None
+    except Exception as e:
+        print(f"Firestore 查詢錯誤: {e}")
         return None
-    finally:
-        cursor.close()
-        conn.close()
 
 # ChatGPT 根據使用者需求和食材生成食譜回覆，並限制在 300 字內
 def generate_recipe_response_with_video(user_message, ingredients):
@@ -118,15 +90,14 @@ def generate_recipe_response_with_video(user_message, ingredients):
             {"role": "system", "content": "你是一位專業的廚師助理，會根據用戶的需求生成食譜，並提供 YouTube 影片連結。"},
             {"role": "user", "content": prompt}
         ],
-        max_tokens=300  # 限制 ChatGPT 回應的字數
+        max_tokens=300
     )
     recipe = response.choices[0].message['content'].strip()
     return recipe
 
 # 建立多頁式訊息，新增「查看影片」按鈕
 def create_flex_message(recipe_text, video_url, user_id, dish_name):
-    # 假設您已將食譜儲存到資料庫，並返回 recipe_id
-    recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text, video_url)  # 儲存食譜到資料庫
+    recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text, video_url)
 
     bubble = {
         "type": "bubble",
@@ -160,7 +131,7 @@ def create_flex_message(recipe_text, video_url, user_id, dish_name):
                     "action": {
                         "type": "uri",
                         "label": "查看影片",
-                        "uri": video_url  # 這裡是 YouTube 影片連結
+                        "uri": video_url
                     },
                     "color": "#474242",
                     "style": "primary"
@@ -211,7 +182,6 @@ def handle_image_message(event):
     message_id = event.message.id
     message_content = line_bot_api.get_message_content(message_id)
     
-    # 讀取影像並傳給 Vision API 進行物體偵測
     image_data = io.BytesIO(message_content.content)
     image = vision.Image(content=image_data.read())
     
@@ -220,37 +190,27 @@ def handle_image_message(event):
         labels = response.label_annotations
         
         if labels:
-            # 取得辨識出的標籤（物體名稱）
             detected_labels = [label.description for label in labels]
-            print(f"Google Vision 辨識出的標籤: {detected_labels}")
-            
-            # 將標籤傳送給 ChatGPT 進行繁體中文轉換及過濾非食材詞彙
             processed_text = translate_and_filter_ingredients(detected_labels)
             user_id = event.source.user_id
-            if processed_text:  # 確保有過濾到食材內容
-                user_ingredients[user_id] = processed_text  # 儲存過濾後的食材
-                print(f"處理後的食材文字: {processed_text}")
-                
-                # 問使用者料理問題
+            if processed_text:
+                user_ingredients[user_id] = processed_text
                 question_response = ask_user_for_recipe_info()
                 line_bot_api.reply_message(
                     event.reply_token,
                     TextSendMessage(text=question_response)
                 )
             else:
-                # 如果未能提取到食材，提醒使用者重新上傳圖片
                 line_bot_api.reply_message(
                     event.reply_token,
                     TextSendMessage(text="未能識別出任何食材，請嘗試上傳另一張清晰的圖片。")
                 )
         else:
-            # 無法辨識出任何物體
             line_bot_api.reply_message(
                 event.reply_token,
                 TextSendMessage(text="無法辨識出任何物體，請確保圖片中的食材明顯可見。")
             )
     except Exception as e:
-        # 回傳 Google Vision API 的錯誤資訊
         print(f"Google Vision API 錯誤: {str(e)}")
         line_bot_api.reply_message(
             event.reply_token,
@@ -259,7 +219,6 @@ def handle_image_message(event):
 
 # ChatGPT 翻譯並過濾非食材詞彙
 def translate_and_filter_ingredients(detected_labels):
-    # 呼叫 ChatGPT 翻譯為繁體中文並過濾非食材詞彙
     prompt = f"以下是從圖片中辨識出的物體列表：\n{', '.join(detected_labels)}\n請將其翻譯成繁體中文，並只保留與食材相關的詞彙，去除非食材的詞彙。"
     response = openai.ChatCompletion.create(
         model="gpt-4",
@@ -285,7 +244,7 @@ def handle_postback(event):
 
     if action == 'new_recipe':
         recipe_id = params.get('recipe_id')
-        recipe = get_recipe_from_db(recipe_id)  # 從資料庫查詢食譜
+        recipe = get_recipe_from_db(recipe_id)
         new_recipe = generate_recipe_response_with_video("新的食譜", recipe["recipe"])
         line_bot_api.reply_message(
             event.reply_token,
@@ -298,7 +257,7 @@ def handle_postback(event):
         )
     elif action == 'save_favorite':
         recipe_id = params.get('recipe_id')
-        recipe = get_recipe_from_db(recipe_id)  # 從資料庫查詢食譜
+        recipe = get_recipe_from_db(recipe_id)
         save_to_favorites(user_id, recipe['dish'], recipe['recipe'], recipe['link'])
         line_bot_api.reply_message(
             event.reply_token,
@@ -311,17 +270,14 @@ def handle_message(event):
     user_id = event.source.user_id
     user_message = event.message.text
     
-    # 假設使用者回答了關於料理需求的問題
     if "份" in user_message or "人" in user_message:
         ingredients = user_ingredients.get(user_id, None)
         if ingredients:
-            # 根據使用者的需求和先前辨識的食材生成食譜
             recipe_response = generate_recipe_response_with_video(user_message, ingredients)
-            video_url = "https://www.youtube.com/results?search_query=recipe"  # 替換為 ChatGPT 生成的影片連結
-            flex_message = create_flex_message(recipe_response, video_url, user_id, "焗烤料理")  # 假設 dish 名稱為 "焗烤料理"
+            video_url = "https://www.youtube.com/results?search_query=recipe"
+            flex_message = create_flex_message(recipe_response, video_url, user_id, "焗烤料理")
             line_bot_api.reply_message(event.reply_token, flex_message)
         else:
-            # 如果沒有已辨識的食材，回應提示使用者上傳圖片
             line_bot_api.reply_message(
                 event.reply_token,
                 TextSendMessage(text="請先上傳圖片來辨識食材。")
@@ -344,9 +300,8 @@ def callback():
         print("無效的簽名錯誤!")
         abort(400)
     except Exception as e:
-        # 捕捉並打印完整的錯誤訊息
         print(f"發生錯誤: {str(e)}")
-        abort(500)  # 回傳 500 錯誤給客戶端
+        abort(500)
     return "OK"
 
 # 健康檢查路由
