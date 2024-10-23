@@ -117,7 +117,7 @@ def generate_recipe_response_with_video(user_message, ingredients):
     return recipe_text, video_link
 
 # 建立多頁式訊息，新增「查看影片」按鈕
-def create_flex_message(recipe_text, video_url, user_id, dish_name, ingredients):
+def create_flex_message(recipe_text, video_url, user_id, dish_name):
     recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text, video_url)
 
     bubble = {
@@ -162,7 +162,7 @@ def create_flex_message(recipe_text, video_url, user_id, dish_name, ingredients)
                 "action": {
                     "type": "postback",
                     "label": "有沒有其他的食譜",
-                    "data": f"action=new_recipe&user_id={user_id}&ingredients={','.join(ingredients)}"  # 請求新的食譜
+                    "data": f"action=new_recipe&user_id={user_id}&ingredients={','.join(user_ingredients)}"  # 請求新的食譜
                 },
                 "color": "#474242",
                 "style": "primary"
