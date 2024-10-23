@@ -38,7 +38,6 @@ def get_db_connection():
         conn = mysql.connector.connect(
             host=os.getenv('MYSQL_HOST'),
             user=os.getenv('MYSQL_USER'),
-            password=os.getenv('MYSQL_PASSWORD'),
             database=os.getenv('MYSQL_DATABASE'),
             port=os.getenv('MYSQL_PORT', 3306)
         )
@@ -162,7 +161,7 @@ def create_flex_message(recipe_text, video_url, user_id, dish_name):
                         "label": "查看影片",
                         "uri": video_url  # 這裡是 YouTube 影片連結
                     },
-                    "color": "#FF4500",
+                    "color": "#F6F3EB",
                     "style": "primary"
                 },
                 {
@@ -172,7 +171,7 @@ def create_flex_message(recipe_text, video_url, user_id, dish_name):
                         "label": "有沒有其他的食譜",
                         "data": f"action=new_recipe&user_id={user_id}&recipe_id={recipe_id}"
                     },
-                    "color": "#1DB446",
+                    "color": "##474242",
                     "style": "primary"
                 },
                 {
@@ -182,7 +181,7 @@ def create_flex_message(recipe_text, video_url, user_id, dish_name):
                         "label": "我想辨識新的一張圖片",
                         "data": "action=new_image"
                     },
-                    "color": "#FF4500",
+                    "color": "#474242",
                     "style": "primary"
                 },
                 {
