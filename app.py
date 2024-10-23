@@ -1,7 +1,7 @@
 from flask import Flask, request, abort, jsonify
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage
+from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage, FlexSendMessage, PostbackEvent
 import openai
 import os
 from google.cloud import vision
@@ -31,6 +31,156 @@ vision_client = vision.ImageAnnotatorClient()
 
 # 儲存處理後的食材資料（供後續使用）
 user_ingredients = {}
+
+# MySQL 資料庫連線設定
+def get_db_connection():
+    try:
+        conn = mysql.connector.connect(
+            host=os.getenv('MYSQL_HOST'),
+            user=os.getenv('MYSQL_USER'),
+            password=os.getenv('MYSQL_PASSWORD'),
+            database=os.getenv('MYSQL_DATABASE'),
+            port=os.getenv('MYSQL_PORT', 3306)
+        )
+        return conn
+    except mysql.connector.Error as err:
+        print(f"資料庫連線錯誤: {err}")
+        return None
+
+# 儲存最愛食譜
+def save_to_favorites(user_id, dish_name, recipe_text, video_link):
+    conn = get_db_connection()
+    if conn is None:
+        print("無法連接到資料庫，無法儲存最愛")
+        return
+    
+    try:
+        cursor = conn.cursor()
+        sql = "INSERT INTO favorites (user_id, dish, recipe, link) VALUES (%s, %s, %s, %s)"
+        values = (user_id, dish_name, recipe_text, video_link)
+        cursor.execute(sql, values)
+        conn.commit()
+        print(f"已成功儲存至資料庫: {user_id}, {dish_name}, {recipe_text}, {video_link}")
+    except mysql.connector.Error as err:
+        print(f"資料庫插入錯誤: {err}")
+    finally:
+        cursor.close()
+        conn.close()
+
+# 查詢指定使用者的最愛食譜
+@app.route("/favorites/<user_id>")
+def show_favorites_web(user_id):
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"error": "資料庫連線失敗"}), 500
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT dish, recipe, link FROM favorites WHERE user_id = %s", (user_id,))
+        favorites = cursor.fetchall()
+        fav_list = [{"dish": fav[0], "recipe": fav[1], "link": fav[2]} for fav in favorites]
+
+        return jsonify({
+            "user_id": user_id,
+            "favorites": fav_list
+        })
+    except mysql.connector.Error as err:
+        return jsonify({"error": f"資料庫查詢錯誤: {err}"}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+# ChatGPT 根據使用者需求和食材生成食譜回覆，並附上影片連結
+def generate_recipe_response_with_video(user_message, ingredients):
+    prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請根據這些食材生成一個適合的食譜，並附上一個相關的 YouTube 食譜影片連結。"
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "你是一位專業的廚師助理，會根據用戶的需求生成食譜，並提供 YouTube 影片連結。"},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    recipe = response.choices[0].message['content'].strip()
+    return recipe
+
+# 建立多頁式訊息
+def create_flex_message(recipe_text, video_url, user_id, dish_name):
+    bubble = {
+        "type": "bubble",
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                {
+                    "type": "text",
+                    "text": "您的食譜：",
+                    "wrap": True,
+                    "weight": "bold",
+                    "size": "xl"
+                },
+                {
+                    "type": "text",
+                    "text": recipe_text,
+                    "wrap": True,
+                    "margin": "md",
+                    "size": "sm"
+                },
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "uri",
+                        "label": "觀看食譜影片",
+                        "uri": video_url
+                    },
+                    "style": "link",
+                    "margin": "md"
+                }
+            ]
+        },
+        "footer": {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "postback",
+                        "label": "有沒有其他的食譜",
+                        "data": f"action=new_recipe&user_id={user_id}&ingredients={recipe_text}"
+                    },
+                    "color": "#1DB446",
+                    "style": "primary"
+                },
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "postback",
+                        "label": "我想辨識新的一張圖片",
+                        "data": "action=new_image"
+                    },
+                    "color": "#FF4500",
+                    "style": "primary"
+                },
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "postback",
+                        "label": "把這個食譜加入我的最愛",
+                        "data": f"action=save_favorite&user_id={user_id}&dish={dish_name}&recipe={recipe_text}&link={video_url}"
+                    },
+                    "color": "#0000FF",
+                    "style": "primary"
+                }
+            ]
+        }
+    }
+
+    carousel = {
+        "type": "carousel",
+        "contents": [bubble]
+    }
+    return FlexSendMessage(alt_text="您的食譜", contents=carousel)
 
 # 處理圖片訊息，進行 Google Cloud Vision 的物體偵測（Label Detection）
 @handler.add(MessageEvent, message=ImageMessage)
@@ -100,56 +250,45 @@ def translate_and_filter_ingredients(detected_labels):
 
 # 問使用者料理需求
 def ask_user_for_recipe_info():
-    # 問題將詢問使用者他們的料理需求
     return "您今天想做甚麼樣的料理？幾人份？"
 
-# 處理使用者對料理需求的回覆
-@handler.add(MessageEvent, message=TextMessage)
-def handle_message(event):
-    user_id = event.source.user_id
-    user_message = event.message.text
-    print(f"收到訊息: {user_message}")
+# 處理使用者需求
+@handler.add(PostbackEvent)
+def handle_postback(event):
+    data = event.postback.data
+    params = dict(x.split('=') for x in data.split('&'))
+    action = params.get('action')
+    user_id = params.get('user_id')
 
-    if user_message == "我的最愛":
-        show_favorites(event, user_id)
-    elif user_message.startswith("加入我的最愛"):
-        try:
-            _, favorite_text = user_message.split(":", 1)
-            add_to_favorites(event, user_id, favorite_text.strip())
-        except ValueError:
-            line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(text="請使用格式 '加入我的最愛:訊息內容'")
-            )
-    else:
-        # 取得之前處理好的食材資料，並生成對應回應
-        if user_id in user_ingredients and user_ingredients[user_id]:
-            ingredients = user_ingredients[user_id]
-            # 呼叫 ChatGPT 生成食譜並依照使用者需求給回覆
-            recipe_response = generate_recipe_response(user_message, ingredients)
-            line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(text=recipe_response)
-            )
-        else:
-            # 如果沒有儲存食材，提醒使用者上傳圖片來識別食材
-            line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(text="抱歉，由於您沒有提供可以使用的食材清單，我無法為您提供確切的食譜。請上傳圖片以識別食材。")
-            )
+    if action == 'new_recipe':
+        ingredients = params.get('ingredients')
+        new_recipe = generate_recipe_response_with_video("新的食譜", ingredients)
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=f"新的食譜：\n{new_recipe}")
+        )
+    elif action == 'new_image':
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text="請上傳一張新圖片來辨識食材。")
+        )
+    elif action == 'save_favorite':
+        # 從 postback 參數中取得食譜相關資訊
+        recipe_text = params.get('recipe')
+        dish_name = params.get('dish')
+        video_link = params.get('link')
 
-# ChatGPT 根據使用者需求和食材生成食譜回覆
-def generate_recipe_response(user_message, ingredients):
-    prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請根據這些食材生成一個適合的食譜。"
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": "你是一位專業的廚師助理，會根據用戶的需求生成食譜。"},
-            {"role": "user", "content": prompt}
-        ]
-    )
-    recipe = response.choices[0].message['content'].strip()
-    return recipe
+        # 將食譜存入資料庫
+        save_to_favorites(user_id, dish_name, recipe_text, video_link)
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text="已將此食譜加入您的最愛。")
+        )
+
+# LIFF 健康檢查路由
+@app.route("/health", methods=["GET"])
+def health_check():
+    return "OK", 200
 
 # Webhook callback 處理 LINE 訊息
 @app.route("/callback", methods=["POST"])
@@ -163,11 +302,6 @@ def callback():
         print("無效的簽名錯誤!")
         abort(400)
     return "OK"
-
-# 健康檢查路由
-@app.route("/health", methods=["GET"])
-def health_check():
-    return "OK", 200
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
