@@ -145,16 +145,6 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredients):
                     "type": "button",
                     "action": {
                         "type": "postback",
-                        "label": "我想辨識新的一張圖片",
-                        "data": "action=new_image"
-                    },
-                    "color": "#474242",
-                    "style": "primary"
-                },
-                {
-                    "type": "button",
-                    "action": {
-                        "type": "postback",
                         "label": "把這個食譜加入我的最愛",
                         "data": f"action=save_favorite&recipe_id={recipe_id}"
                     },
