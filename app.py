@@ -116,87 +116,95 @@ def generate_recipe_response_with_video(user_message, ingredients):
 
     return recipe_text, video_link
 
-# 建立多頁式訊息，新增「查看影片」按鈕
+import re
+
+def clean_text(text):
+    # 去除無效字符和表情符號
+    return re.sub(r'[^\w\s,.!?]', '', text)
+
 def create_flex_message(recipe_text, video_url, user_id, dish_name):
     recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text, video_url)
 
-    bubble = {
-    "type": "bubble",
-    "body": {
-        "type": "box",
-        "layout": "vertical",
-        "contents": [
-            {
-                "type": "text",
-                "text": "您的食譜：",
-                "wrap": True,
-                "weight": "bold",
-                "size": "xl"
-            },
-            {
-                "type": "text",
-                "text": recipe_text,
-                "wrap": True,
-                "margin": "md",
-                "size": "sm"
-            }
-        ]
-    },
-    "footer": {
-        "type": "box",
-        "layout": "vertical",
-        "spacing": "sm",
-        "contents": [
-            {
-                "type": "button",
-                "action": {
-                    "type": "uri",
-                    "label": "查看影片",
-                    "uri": video_url if video_url else f"https://www.youtube.com/results?search_query={quote(dish_name)}+食譜"
-                },
-                "color": "#474242",
-                "style": "primary"
-            },
-            {
-                "type": "button",
-                "action": {
-                    "type": "postback",
-                    "label": "有沒有其他的食譜",
-                    "data": f"action=new_recipe&user_id={user_id}&ingredients={','.join(user_ingredients)}"  # 請求新的食譜
-                },
-                "color": "#474242",
-                "style": "primary"
-            },
-            {
-                "type": "button",
-                "action": {
-                    "type": "postback",
-                    "label": "我想辨識新的一張圖片",
-                    "data": "action=new_image"  # 辨識新圖片
-                },
-                "color": "#474242",
-                "style": "primary"
-            },
-            {
-                "type": "button",
-                "action": {
-                    "type": "postback",
-                    "label": "把這個食譜加入我的最愛",
-                    "data": f"action=save_favorite&recipe_id={recipe_id}"  # 儲存到最愛
-                },
-                "color": "#474242",
-                "style": "primary"
-            }
-        ]
-    }
-}
+    # 清理 recipe_text 並確保長度合適
+    short_recipe_text = clean_text(recipe_text[:1000]) if len(recipe_text) > 1000 else clean_text(recipe_text)
 
+    bubble = {
+        "type": "bubble",
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                {
+                    "type": "text",
+                    "text": "您的食譜：",
+                    "wrap": True,
+                    "weight": "bold",
+                    "size": "xl"
+                },
+                {
+                    "type": "text",
+                    "text": short_recipe_text,
+                    "wrap": True,
+                    "margin": "md",
+                    "size": "sm"
+                }
+            ]
+        },
+        "footer": {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "uri",
+                        "label": "查看影片",
+                        "uri": video_url if video_url else f"https://www.youtube.com/results?search_query={quote(dish_name)}+食譜"
+                    },
+                    "color": "#474242",
+                    "style": "primary"
+                },
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "postback",
+                        "label": "有沒有其他的食譜",
+                        "data": f"action=new_recipe&user_id={user_id}&ingredients={','.join(user_ingredients)}"
+                    },
+                    "color": "#474242",
+                    "style": "primary"
+                },
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "postback",
+                        "label": "我想辨識新的一張圖片",
+                        "data": "action=new_image"
+                    },
+                    "color": "#474242",
+                    "style": "primary"
+                },
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "postback",
+                        "label": "把這個食譜加入我的最愛",
+                        "data": f"action=save_favorite&recipe_id={recipe_id}"
+                    },
+                    "color": "#474242",
+                    "style": "primary"
+                }
+            ]
+        }
+    }
 
     carousel = {
         "type": "carousel",
         "contents": [bubble]
     }
     return FlexSendMessage(alt_text="您的食譜", contents=carousel)
+
 
 # 處理圖片訊息，進行 Google Cloud Vision 的物體偵測（Label Detection）
 @handler.add(MessageEvent, message=ImageMessage)
