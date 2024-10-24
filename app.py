@@ -9,7 +9,6 @@ from dotenv import load_dotenv
 import io
 import firebase_admin
 from firebase_admin import credentials, firestore
-from urllib.parse import quote
 
 # 載入環境變數
 load_dotenv()
@@ -28,7 +27,7 @@ if firebase_credentials_content:
     db = firestore.client()
 else:
     print("Firebase 金鑰未正確設置，請檢查環境變數")
-    
+
 # 初始化 Google Cloud Vision API 客戶端
 google_credentials_content = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_CONTENT")
 if google_credentials_content:
@@ -45,39 +44,18 @@ handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 # OpenAI API 金鑰
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# 初始化 Google Cloud Vision API 客戶端
-vision_client = vision.ImageAnnotatorClient()
-
 # 儲存處理後的食材資料（供後續使用）
 user_ingredients = {}
 
 # 儲存最愛食譜到 Firebase Firestore
-def save_recipe_to_db(user_id, dish_name, recipe_text, video_link):
+def save_recipe_to_db(user_id, dish_name, recipe_text):
     try:
-        # 自動生成一個新的 DocumentReference
+        # 手動生成一個新的 DocumentReference，這樣可以提前獲取 ID
         doc_ref = db.collection('recipes').document()
         doc_ref.set({
             'user_id': user_id,
             'dish': dish_name,
-            'recipe': recipe_text,
-            'link': video_link
-        })
-        return doc_ref.id  # 返回文檔 ID
-    except Exception as e:
-        print(f"Firestore 插入錯誤: {e}")
-        return None
-
-
-# 儲存食譜並返回唯一的 recipe_id
-def save_recipe_to_db(user_id, dish_name, recipe_text, video_link):
-    try:
-        # 手動生成一個新的 DocumentReference，這樣可以提前獲取 ID
-        doc_ref = db.collection('recipes').document()  # 生成一個空的文檔引用
-        doc_ref.set({
-            'user_id': user_id,
-            'dish': dish_name,
-            'recipe': recipe_text,
-            'link': video_link
+            'recipe': recipe_text
         })
         return doc_ref.id  # 返回生成的文檔 ID
     except Exception as e:
@@ -98,23 +76,18 @@ def get_recipe_from_db(recipe_id):
         return None
 
 # ChatGPT 根據使用者需求和食材生成食譜回覆，並限制在 300 字內
-def generate_recipe_response_with_video(user_message, ingredients):
-    prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請根據這些食材生成一個適合的食譜，字數限制在300字以內，並附上一個相關的 YouTube 食譜影片連結。"
+def generate_recipe_response(user_message, ingredients):
+    prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請根據這些食材生成一個適合的食譜，字數限制在300字以內。"
     response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=[
-            {"role": "system", "content": "你是一位專業的廚師助理，會根據用戶的需求生成食譜，並提供 YouTube 影片連結。"},
+            {"role": "system", "content": "你是一位專業的廚師助理，會根據用戶的需求生成食譜。"},
             {"role": "user", "content": prompt}
         ],
         max_tokens=500
     )
     recipe = response.choices[0].message['content'].strip()
-    # 假設 ChatGPT 會返回影片連結，將內容拆分為食譜和影片
-    recipe_parts = recipe.split("YouTube 影片連結: ")
-    recipe_text = recipe_parts[0].strip()  # 食譜內容
-    video_link = recipe_parts[1].strip() if len(recipe_parts) > 1 else ""  # 如果有影片連結，提取出來
-
-    return recipe_text, video_link
+    return recipe
 
 import re
 
@@ -122,8 +95,8 @@ def clean_text(text):
     # 去除無效字符和表情符號
     return re.sub(r'[^\w\s,.!?]', '', text)
 
-def create_flex_message(recipe_text, video_url, user_id, dish_name, ingredients):
-    recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text, video_url)
+def create_flex_message(recipe_text, user_id, dish_name, ingredients):
+    recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text)
 
     # 確保 ingredients 是一個列表，並將其轉換為字符串
     if isinstance(ingredients, list):
@@ -158,16 +131,6 @@ def create_flex_message(recipe_text, video_url, user_id, dish_name, ingredients)
             "layout": "vertical",
             "spacing": "sm",
             "contents": [
-                {
-                    "type": "button",
-                    "action": {
-                        "type": "uri",
-                        "label": "查看影片",
-                        "uri": video_url if video_url else f"https://www.youtube.com/results?search_query={quote(dish_name)}+食譜"
-                    },
-                    "color": "#474242",
-                    "style": "primary"
-                },
                 {
                     "type": "button",
                     "action": {
@@ -207,8 +170,6 @@ def create_flex_message(recipe_text, video_url, user_id, dish_name, ingredients)
         "contents": [bubble]
     }
     return FlexSendMessage(alt_text="您的食譜", contents=carousel)
-
-
 
 # 處理圖片訊息，進行 Google Cloud Vision 的物體偵測（Label Detection）
 @handler.add(MessageEvent, message=ImageMessage)
@@ -279,7 +240,7 @@ def handle_postback(event):
     if action == 'new_recipe':
         recipe_id = params.get('recipe_id')
         recipe = get_recipe_from_db(recipe_id)
-        new_recipe = generate_recipe_response_with_video("新的食譜", recipe["recipe"])
+        new_recipe = generate_recipe_response("新的食譜", recipe["recipe"])
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text=f"新的食譜：\n{new_recipe}")
@@ -292,7 +253,7 @@ def handle_postback(event):
     elif action == 'save_favorite':
         recipe_id = params.get('recipe_id')
         recipe = get_recipe_from_db(recipe_id)
-        save_to_favorites(user_id, recipe['dish'], recipe['recipe'], recipe['link'])
+        save_recipe_to_db(user_id, recipe['dish'], recipe['recipe'])
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text="已將此食譜加入您的最愛。")
@@ -307,9 +268,8 @@ def handle_message(event):
     if "份" in user_message or "人" in user_message:
         ingredients = user_ingredients.get(user_id, None)
         if ingredients:
-            recipe_response = generate_recipe_response_with_video(user_message, ingredients)
-            video_url = "https://www.youtube.com/results?search_query=recipe"
-            flex_message = create_flex_message(recipe_response, video_url, user_id, "焗烤料理")
+            recipe_response = generate_recipe_response(user_message, ingredients)
+            flex_message = create_flex_message(recipe_response, user_id, "焗烤料理", ingredients)
             line_bot_api.reply_message(event.reply_token, flex_message)
         else:
             line_bot_api.reply_message(
