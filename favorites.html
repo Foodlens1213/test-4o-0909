@@ -8,6 +8,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js"></script>
+    <!-- LIFF SDK -->
+    <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
 </head>
 <body>
     <h1>我的最愛食譜</h1>
@@ -15,53 +17,60 @@
 
     <script>
         // Firebase 設定
-    const firebaseConfig = {
-    apiKey: "AIzaSyArYFpAk7EvMSTtbEt7rbMRb6cUEnGEqmU",
-    authDomain: "foodlens-d855d.firebaseapp.com",
-    projectId: "foodlens-d855d",
-    storageBucket: "foodlens-d855d.appspot.com",
-    messagingSenderId: "615735131157",
-    appId: "1:615735131157:web:bcaf7a030b802c21d2221c",
-    measurementId: "G-Z4HZ6MSVD7"
-  };
+        const firebaseConfig = {
+            apiKey: "AIzaSyArYFpAk7EvMSTtbEt7rbMRb6cUEnGEqmU",
+            authDomain: "foodlens-d855d.firebaseapp.com",
+            projectId: "foodlens-d855d",
+            storageBucket: "foodlens-d855d.appspot.com",
+            messagingSenderId: "615735131157",
+            appId: "1:615735131157:web:bcaf7a030b802c21d2221c",
+            measurementId: "G-Z4HZ6MSVD7"
+        };
 
         // 初始化 Firebase
         const app = firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        const auth = firebase.auth();
 
-        // 這裡假設用戶已經登入，如果您使用 LINE LIFF，需要處理 LIFF 登入邏輯
-        auth.signInAnonymously().then(() => {
-            const user = auth.currentUser;
-            const userId = user.uid;
+        // 初始化 LIFF
+        async function initializeLiff() {
+            await liff.init({ liffId: "2006463836-0VmgLQA8" });  // 替換為你的 LIFF ID
 
-            // 從 Firestore 中讀取收藏的食譜
-            db.collection('favorites').where('user_id', '==', userId)
-                .get()
-                .then((querySnapshot) => {
-                    const recipesDiv = document.getElementById('recipes');
-                    if (querySnapshot.empty) {
-                        recipesDiv.innerHTML = "<p>您還沒有收藏任何食譜。</p>";
-                    } else {
-                        querySnapshot.forEach((doc) => {
-                            const recipe = doc.data();
-                            const recipeHtml = `
-                                <div>
-                                    <h3>${recipe.dish}</h3>
-                                    <p>${recipe.recipe}</p>
-                                    <a href="${recipe.link}" target="_blank">觀看影片</a>
-                                </div>
-                                <hr>
-                            `;
-                            recipesDiv.innerHTML += recipeHtml;
-                        });
-                    }
-                })
-                .catch((error) => {
-                    console.error("Error getting recipes: ", error);
-                });
-        }).catch((error) => {
-            console.error("Authentication error: ", error);
+            if (!liff.isLoggedIn()) {
+                liff.login();
+            } else {
+                const profile = await liff.getProfile();
+                const userId = profile.userId;  // LINE 使用者的 userId
+
+                // 從 Firestore 中讀取收藏的食譜
+                db.collection('recipes').where('user_id', '==', userId)
+                    .get()
+                    .then((querySnapshot) => {
+                        const recipesDiv = document.getElementById('recipes');
+                        if (querySnapshot.empty) {
+                            recipesDiv.innerHTML = "<p>您還沒有收藏任何食譜。</p>";
+                        } else {
+                            querySnapshot.forEach((doc) => {
+                                const recipe = doc.data();
+                                const recipeHtml = `
+                                    <div>
+                                        <h3>${recipe.dish}</h3>
+                                        <p>${recipe.recipe}</p>
+                                    </div>
+                                    <hr>
+                                `;
+                                recipesDiv.innerHTML += recipeHtml;
+                            });
+                        }
+                    })
+                    .catch((error) => {
+                        console.error("Error getting recipes: ", error);
+                    });
+            }
+        }
+
+        // 啟動 LIFF
+        document.addEventListener("DOMContentLoaded", function() {
+            initializeLiff();
         });
     </script>
 </body>
