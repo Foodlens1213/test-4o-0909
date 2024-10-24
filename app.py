@@ -132,6 +132,11 @@ def clean_text(text):
     return re.sub(r'[^\w\s,.!?]', '', text)
 # 建立多頁訊息，按鈕點擊後會變更顏色並回應
 def create_flex_message(recipe_text, user_id, dish_name, ingredients):
+    # 如果 dish_name 或 recipe_text 為空，提供預設值
+    if not dish_name:
+        dish_name = "未命名料理"
+    if not recipe_text:
+        recipe_text = "未提供食譜內容"
     recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text)
 
     # 確保 ingredients 是一個列表，並將其轉換為字符串
