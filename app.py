@@ -107,13 +107,14 @@ def generate_recipe_response(user_message, ingredients):
         max_tokens=500
     )
     recipe = response.choices[0].message['content'].strip()
-    
-    # 假設 ChatGPT 返回的內容是類似這樣：
-    # 料理名稱: 番茄義大利麵
-    # 食譜: 步驟1，步驟2……
+
+    # 打印出完整的返回內容進行檢查
+    print(f"ChatGPT 返回的內容: {recipe}")
+
     dish_name = None
     recipe_text = None
-    
+
+    # 對 ChatGPT 返回的內容進行簡單解析
     recipe_parts = recipe.split("\n\n")
     for part in recipe_parts:
         if "料理名稱:" in part:
@@ -121,11 +122,15 @@ def generate_recipe_response(user_message, ingredients):
         elif "食譜:" in part:
             recipe_text = part.replace("食譜:", "").strip()
 
-    # 如果沒有解析到，使用默認值
+    # 如果沒有解析到，設置默認值
     if not dish_name:
         dish_name = "未命名料理"
     if not recipe_text:
         recipe_text = "未提供食譜內容"
+
+    # 打印出最終解析的內容進行檢查
+    print(f"解析出的料理名稱: {dish_name}")
+    print(f"解析出的食譜內容: {recipe_text}")
 
     return dish_name, recipe_text
 
