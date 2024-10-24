@@ -95,7 +95,7 @@ def get_user_favorites():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ChatGPT 根據使用者需求和食材生成食譜回覆，並限制在 300 字內
+# ChatGPT 根據使用者需求和食材生成食譜回覆，並限制在 500 字內
 def generate_recipe_response(user_message, ingredients):
     prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請生成一個適合的食譜，並按照以下格式輸出：\n\n料理名稱: [名稱]\n\n食譜: [食譜內容]。請字數限制在500字以內。"
     
@@ -111,20 +111,25 @@ def generate_recipe_response(user_message, ingredients):
     recipe = response.choices[0].message['content'].strip()
     
     # 假設 ChatGPT 按照「料理名稱:」和「食譜:」格式返回
-    lines = recipe.split("\n")
-    
-    # 根據格式識別菜名和食譜
     dish_name = None
     recipe_text = None
-    
-    for line in lines:
-        if line.startswith("料理名稱:"):
-            dish_name = line.replace("料理名稱:", "").strip()
-        elif line.startswith("食譜:"):
-            recipe_text = line.replace("食譜:", "").strip()
-    
-    return dish_name, recipe_text
 
+    # 確保即使有多餘的換行，依然能夠正確抓取
+    recipe_parts = recipe.split("\n\n")  # 使用雙換行符來分割段落
+    
+    for part in recipe_parts:
+        if part.startswith("料理名稱:"):
+            dish_name = part.replace("料理名稱:", "").strip()
+        elif part.startswith("食譜:"):
+            recipe_text = part.replace("食譜:", "").strip()
+
+    # 如果任一部分沒有正確抓取，提供默認值
+    if not dish_name:
+        dish_name = "未命名料理"
+    if not recipe_text:
+        recipe_text = "未提供食譜內容"
+
+    return dish_name, recipe_text
     
 import re
 def clean_text(text):
