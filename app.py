@@ -289,8 +289,10 @@ def handle_message(event):
     if "份" in user_message or "人" in user_message:
         ingredients = user_ingredients.get(user_id, None)
         if ingredients:
-            recipe_response = generate_recipe_response(user_message, ingredients)
-            flex_message = create_flex_message(recipe_response, user_id, ingredients)
+            # 生成並返回菜名和食譜內容
+            dish_name, recipe_response = generate_recipe_response(user_message, ingredients)
+            # 傳遞 dish_name 到 create_flex_message 函數
+            flex_message = create_flex_message(recipe_response, user_id, dish_name, ingredients)
             line_bot_api.reply_message(event.reply_token, flex_message)
         else:
             line_bot_api.reply_message(
