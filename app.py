@@ -122,11 +122,14 @@ def clean_text(text):
     # 去除無效字符和表情符號
     return re.sub(r'[^\w\s,.!?]', '', text)
 
-def create_flex_message(recipe_text, video_url, user_id, dish_name):
+def create_flex_message(recipe_text, video_url, user_id, dish_name, ingredients):
     recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text, video_url)
 
-    # 清理 recipe_text 並確保長度合適
-    short_recipe_text = clean_text(recipe_text[:1000]) if len(recipe_text) > 1000 else clean_text(recipe_text)
+    # 確保 ingredients 是一個列表，並將其轉換為字符串
+    if isinstance(ingredients, list):
+        ingredients_str = ','.join(ingredients)
+    else:
+        ingredients_str = str(ingredients)
 
     bubble = {
         "type": "bubble",
@@ -143,7 +146,7 @@ def create_flex_message(recipe_text, video_url, user_id, dish_name):
                 },
                 {
                     "type": "text",
-                    "text": short_recipe_text,
+                    "text": recipe_text[:1000],  # 截取過長的文字
                     "wrap": True,
                     "margin": "md",
                     "size": "sm"
@@ -170,7 +173,7 @@ def create_flex_message(recipe_text, video_url, user_id, dish_name):
                     "action": {
                         "type": "postback",
                         "label": "有沒有其他的食譜",
-                        "data": f"action=new_recipe&user_id={user_id}&ingredients={','.join(user_ingredients)}"
+                        "data": f"action=new_recipe&user_id={user_id}&ingredients={ingredients_str}"
                     },
                     "color": "#474242",
                     "style": "primary"
@@ -204,6 +207,7 @@ def create_flex_message(recipe_text, video_url, user_id, dish_name):
         "contents": [bubble]
     }
     return FlexSendMessage(alt_text="您的食譜", contents=carousel)
+
 
 
 # 處理圖片訊息，進行 Google Cloud Vision 的物體偵測（Label Detection）
