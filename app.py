@@ -109,11 +109,11 @@ def generate_recipe_response(user_message, ingredients):
     recipe = response.choices[0].message['content'].strip()
     
     # 假設第一行是菜名，後面是食譜內容
-    lines = recipe.split("\n")
-    dish_name = lines[0]  # 第一行作為菜名
-    recipe_text = "\n".join(lines[1:])  # 其餘行作為食譜內容
+    #lines = recipe.split("\n")
+    #dish_name = lines[0]  # 第一行作為菜名
+    #recipe_text = "\n".join(lines[1:])  # 其餘行作為食譜內容
 
-    return dish_name, recipe_text
+    return recipe #dish_name, recipe_text
     
 import re
 def clean_text(text):
