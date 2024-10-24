@@ -95,10 +95,9 @@ def get_user_favorites():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ChatGPT 根據使用者需求和食材生成食譜回覆，並限制在 500 字內
+# ChatGPT 根據使用者需求和食材生成食譜回覆，並限制在 300 字內
 def generate_recipe_response(user_message, ingredients):
-    prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請生成一個適合的食譜，並按照以下格式輸出：\n\n料理名稱: [名稱]\n\n食譜: [食譜內容]。請字數限制在500字以內。"
-    
+    prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請根據這些食材生成一個適合的食譜，字數限制在300字以內。"
     response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=[
@@ -107,24 +106,9 @@ def generate_recipe_response(user_message, ingredients):
         ],
         max_tokens=500
     )
-    
     recipe = response.choices[0].message['content'].strip()
-    
-    # 假設 ChatGPT 按照「料理名稱:」和「食譜:」格式返回
-    dish_name = None
-    recipe_text = None
+    return recipe
 
-    # 確保即使有多餘的換行，依然能夠正確抓取
-    recipe_parts = recipe.split("\n\n")  # 使用雙換行符來分割段落
-    
-    for part in recipe_parts:
-        if part.startswith("料理名稱:"):
-            dish_name = part.replace("料理名稱:", "").strip()
-        elif part.startswith("食譜:"):
-            recipe_text = part.replace("食譜:", "").strip()
-
-    return dish_name, recipe_text
-    
 import re
 def clean_text(text):
     # 去除無效字符和表情符號
@@ -154,14 +138,7 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredients):
                 },
                 {
                     "type": "text",
-                    "text": f"料理名稱: {dish_name}",  # 顯示菜名
-                    "wrap": True,
-                    "margin": "md",
-                    "size": "sm"
-                },
-                {
-                    "type": "text",
-                    "text": f"食譜內容: {recipe_text}",  # 截取過長的文字
+                    "text": recipe_text[:1000],  # 截取過長的文字
                     "wrap": True,
                     "margin": "md",
                     "size": "sm"
@@ -287,13 +264,13 @@ def handle_postback(event):
         new_recipe = generate_recipe_response("新的食譜", ingredients)
         flex_message = create_flex_message(new_recipe, user_id, "新食譜", ingredients)
         line_bot_api.push_message(user_id, flex_message)
-    
+
     elif action == 'new_image':
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text="請上傳一張新圖片來辨識食材。")
         )
-    
+
     elif action == 'save_favorite':
         recipe_id = params.get('recipe_id')
         recipe = get_recipe_from_db(recipe_id)
@@ -312,9 +289,8 @@ def handle_message(event):
     if "份" in user_message or "人" in user_message:
         ingredients = user_ingredients.get(user_id, None)
         if ingredients:
-            # 获取菜名和食谱
-            dish_name, recipe_response = generate_recipe_response(user_message, ingredients)
-            flex_message = create_flex_message(recipe_response, user_id, dish_name, ingredients)
+            recipe_response = generate_recipe_response(user_message, ingredients)
+            flex_message = create_flex_message(recipe_response, user_id, ingredients)
             line_bot_api.reply_message(event.reply_token, flex_message)
         else:
             line_bot_api.reply_message(
