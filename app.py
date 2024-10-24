@@ -151,7 +151,7 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredients):
     else:
         ingredients_str = str(ingredients)
 
-    # 修改 bubble 結構，將料理名稱添加進去
+    # 修改 bubble 結構，將料理名稱和食譜內容正確地顯示
     bubble = {
         "type": "bubble",
         "body": {
@@ -160,7 +160,7 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredients):
             "contents": [
                 {
                     "type": "text",
-                    "text": f"料理名稱：{dish_name}",  # 添加料理名稱
+                    "text": f"料理名稱：{dish_name}",  # 顯示料理名稱
                     "wrap": True,
                     "weight": "bold",
                     "size": "xl"
@@ -175,7 +175,7 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredients):
                 },
                 {
                     "type": "text",
-                    "text": recipe_text[:1000],  # 截取過長的文字，並顯示食譜內容
+                    "text": recipe_text[:1000] if recipe_text else "食譜內容缺失",  # 顯示食譜內容
                     "wrap": True,
                     "margin": "md",
                     "size": "sm"
@@ -223,6 +223,8 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredients):
         "contents": [bubble]
     }
     return FlexSendMessage(alt_text="您的食譜", contents=carousel)
+print(f"傳遞給 Flex Message 的 recipe_text: {recipe_text}")
+
 
 
 # 處理圖片訊息，進行 Google Cloud Vision 的物體偵測（Label Detection）
