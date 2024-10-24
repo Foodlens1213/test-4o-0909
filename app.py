@@ -223,7 +223,6 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredients):
         "contents": [bubble]
     }
     return FlexSendMessage(alt_text="您的食譜", contents=carousel)
-print(f"傳遞給 Flex Message 的 recipe_text: {recipe_text}")
 
 
 
