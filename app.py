@@ -155,7 +155,14 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredients):
                 },
                 {
                     "type": "text",
-                    "text": dish_name,recipe_text[:1000],  # 截取過長的文字
+                    "text": f"料理名稱: {dish_name}",  # 顯示菜名
+                    "wrap": True,
+                    "margin": "md",
+                    "size": "sm"
+                },
+                                {
+                    "type": "text",
+                    "text": f"食譜內容: {recipe_text[:1000]}",  # 截取過長的文字
                     "wrap": True,
                     "margin": "md",
                     "size": "sm"
