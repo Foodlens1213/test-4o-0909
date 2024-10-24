@@ -107,7 +107,25 @@ def generate_recipe_response(user_message, ingredients):
         max_tokens=500
     )
     recipe = response.choices[0].message['content'].strip()
-    return recipe
+    # 假設 ChatGPT 按照「料理名稱:」和「食譜:」格式返回
+    dish_name = None
+    recipe_text = None
+
+    recipe_parts = recipe.split("\n\n")  # 使用雙換行符來分割段落
+    
+    for part in recipe_parts:
+        if "料理名稱:" in part:
+            dish_name = part.replace("料理名稱:", "").strip()
+        elif "食譜:" in part:
+            recipe_text = part.replace("食譜:", "").strip()
+
+    # 如果沒有正確抓取，則設置默認值
+    if not dish_name:
+        dish_name = "未命名料理"
+    if not recipe_text:
+        recipe_text = "未提供食譜內容"
+
+    return dish_name, recipe_text
 
 import re
 def clean_text(text):
