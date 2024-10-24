@@ -95,9 +95,8 @@ def get_user_favorites():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ChatGPT 根據使用者需求和食材生成食譜回覆，並限制在 300 字內
 def generate_recipe_response(user_message, ingredients):
-    prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請根據這些食材生成一個適合的食譜，字數限制在300字以內。"
+    prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請按照以下格式生成一個適合的食譜：\n\n食譜名稱: [食譜名稱]\n食材: [食材列表]\n步驟: [具體步驟]，字數限制在300字以內。"
     response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=[
@@ -108,19 +107,23 @@ def generate_recipe_response(user_message, ingredients):
     )
     recipe = response.choices[0].message['content'].strip()
 
-    # 打印出完整的返回內容進行檢查
+    # 打印返回的完整內容，便於調試
     print(f"ChatGPT 返回的內容: {recipe}")
 
     dish_name = None
     recipe_text = None
 
-    # 對 ChatGPT 返回的內容進行簡單解析
-    recipe_parts = recipe.split("\n\n")
-    for part in recipe_parts:
-        if "料理名稱:" in part:
-            dish_name = part.replace("料理名稱:", "").strip()
-        elif "食譜:" in part:
-            recipe_text = part.replace("食譜:", "").strip()
+    # 修改解析邏輯，支持新的標籤
+    try:
+        recipe_parts = recipe.split("\n\n")  # 分割段落
+        for part in recipe_parts:
+            if "食譜名稱:" in part:
+                dish_name = part.replace("食譜名稱:", "").strip()
+            elif "步驟:" in part:
+                recipe_text = part.replace("步驟:", "").strip()
+
+    except Exception as e:
+        print(f"解析 ChatGPT 回應失敗: {e}")
 
     # 如果沒有解析到，設置默認值
     if not dish_name:
@@ -128,7 +131,6 @@ def generate_recipe_response(user_message, ingredients):
     if not recipe_text:
         recipe_text = "未提供食譜內容"
 
-    # 打印出最終解析的內容進行檢查
     print(f"解析出的料理名稱: {dish_name}")
     print(f"解析出的食譜內容: {recipe_text}")
 
