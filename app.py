@@ -75,6 +75,26 @@ def get_recipe_from_db(recipe_id):
         print(f"Firestore 查詢錯誤: {e}")
         return None
 
+# 顯示收藏的食譜（前端頁面）
+@app.route('/favorites')
+def favorites_page():
+    return render_template('favorites.html')
+
+# 從 Firestore 獲取用戶的收藏食譜 (API)
+@app.route('/api/favorites', methods=['GET'])
+def get_user_favorites():
+    user_id = request.args.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Missing user_id'}), 400
+
+    try:
+        recipes_ref = db.collection('recipes').where('user_id', '==', user_id)
+        docs = recipes_ref.stream()
+        favorites = [doc.to_dict() for doc in docs]
+        return jsonify(favorites), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 # ChatGPT 根據使用者需求和食材生成食譜回覆，並限制在 300 字內
 def generate_recipe_response(user_message, ingredients):
     prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請根據這些食材生成一個適合的食譜，字數限制在300字以內。"
