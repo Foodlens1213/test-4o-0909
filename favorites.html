@@ -8,8 +8,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js"></script>
-    <!-- LIFF SDK -->
-    <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
     <h1>我的最愛食譜</h1>
@@ -18,31 +17,30 @@
     <script>
         // Firebase 設定
         const firebaseConfig = {
-            apiKey: "AIzaSyArYFpAk7EvMSTtbEt7rbMRb6cUEnGEqmU",
-            authDomain: "foodlens-d855d.firebaseapp.com",
-            projectId: "foodlens-d855d",
-            storageBucket: "foodlens-d855d.appspot.com",
-            messagingSenderId: "615735131157",
-            appId: "1:615735131157:web:bcaf7a030b802c21d2221c",
-            measurementId: "G-Z4HZ6MSVD7"
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
 
         // 初始化 Firebase
         const app = firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        const auth = firebase.auth();
 
         // 初始化 LIFF
         async function initializeLiff() {
-            await liff.init({ liffId: "2006463836-0VmgLQA8" });  // 替換為你的 LIFF ID
-
+            await liff.init({ liffId: "YOUR_LIFF_ID" });  // 替換成您的 LIFF ID
             if (!liff.isLoggedIn()) {
-                liff.login();
+                liff.login();  // 未登入則跳轉登入
             } else {
                 const profile = await liff.getProfile();
-                const userId = profile.userId;  // LINE 使用者的 userId
+                const userId = profile.userId;  // 使用者的 LINE User ID
 
                 // 從 Firestore 中讀取收藏的食譜
-                db.collection('recipes').where('user_id', '==', userId)
+                db.collection('favorites').where('user_id', '==', userId)
                     .get()
                     .then((querySnapshot) => {
                         const recipesDiv = document.getElementById('recipes');
@@ -55,6 +53,7 @@
                                     <div>
                                         <h3>${recipe.dish}</h3>
                                         <p>${recipe.recipe}</p>
+                                        <a href="${recipe.link}" target="_blank">觀看影片</a>
                                     </div>
                                     <hr>
                                 `;
@@ -68,10 +67,8 @@
             }
         }
 
-        // 啟動 LIFF
-        document.addEventListener("DOMContentLoaded", function() {
-            initializeLiff();
-        });
+        // 初始化 LIFF 應用
+        initializeLiff();
     </script>
 </body>
 </html>
