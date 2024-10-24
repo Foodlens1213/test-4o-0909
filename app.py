@@ -93,6 +93,7 @@ import re
 def clean_text(text):
     # 去除無效字符和表情符號
     return re.sub(r'[^\w\s,.!?]', '', text)
+# 建立多頁訊息，按鈕點擊後會變更顏色並回應
 def create_flex_message(recipe_text, user_id, dish_name, ingredients):
     recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text)
 
@@ -137,7 +138,8 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredients):
                         "data": f"action=new_recipe&user_id={user_id}&ingredients={ingredients_str}"
                     },
                     "color": "#474242",
-                    "style": "primary"
+                    "style": "primary",
+                    "height": "sm"
                 },
                 {
                     "type": "button",
@@ -147,9 +149,15 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredients):
                         "data": f"action=save_favorite&recipe_id={recipe_id}"
                     },
                     "color": "#474242",
-                    "style": "primary"
+                    "style": "primary",
+                    "height": "sm"
                 }
             ]
+        },
+        "styles": {
+            "footer": {
+                "separator": True
+            }
         }
     }
 
@@ -226,32 +234,30 @@ def handle_postback(event):
     user_id = params.get('user_id')
 
     if action == 'new_recipe':
-        recipe_id = params.get('recipe_id')
-        recipe = get_recipe_from_db(recipe_id)
-        new_recipe = generate_recipe_response("新的食譜", recipe["recipe"])
+        # 回覆"沒問題，請稍後~"
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text=f"新的食譜：\n{new_recipe}")
+            TextSendMessage(text="沒問題，請稍後~")
         )
-        # 從回傳的資料中提取食材
-        ingredients = params.get('ingredients').split(',')
-        user_message = "新的食譜"  # 可以自訂這個訊息
-        new_recipe = generate_recipe_response(user_message, ingredients)
-        # 建立並回傳包含新食譜的 Flex 訊息
-        flex_message = create_flex_message(new_recipe, user_id, "新的食譜", ingredients)
-        line_bot_api.reply_message(event.reply_token, flex_message)
+        # 生成新的食譜
+        ingredients = params.get('ingredients')
+        new_recipe = generate_recipe_response("新的食譜", ingredients)
+        flex_message = create_flex_message(new_recipe, user_id, "新食譜", ingredients)
+        line_bot_api.push_message(user_id, flex_message)
+    
     elif action == 'new_image':
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text="請上傳一張新圖片來辨識食材。")
         )
+    
     elif action == 'save_favorite':
         recipe_id = params.get('recipe_id')
         recipe = get_recipe_from_db(recipe_id)
         save_recipe_to_db(user_id, recipe['dish'], recipe['recipe'])
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text="已將此食譜加入您的最愛。")
+            TextSendMessage(text="已加入我的最愛~")
         )
 
 # 處理文字訊息，並生成多頁式食譜回覆
