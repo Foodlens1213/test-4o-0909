@@ -107,8 +107,14 @@ def generate_recipe_response(user_message, ingredients):
         max_tokens=500
     )
     recipe = response.choices[0].message['content'].strip()
-    return recipe
+    
+    # 假設第一行是菜名，後面是食譜內容
+    lines = recipe.split("\n")
+    dish_name = lines[0]  # 第一行作為菜名
+    recipe_text = "\n".join(lines[1:])  # 其餘行作為食譜內容
 
+    return dish_name, recipe_text
+    
 import re
 def clean_text(text):
     # 去除無效字符和表情符號
@@ -289,8 +295,9 @@ def handle_message(event):
     if "份" in user_message or "人" in user_message:
         ingredients = user_ingredients.get(user_id, None)
         if ingredients:
-            recipe_response = generate_recipe_response(user_message, ingredients)
-            flex_message = create_flex_message(recipe_response, user_id, "焗烤料理", ingredients)
+            # 获取菜名和食谱
+            dish_name, recipe_response = generate_recipe_response(user_message, ingredients)
+            flex_message = create_flex_message(recipe_response, user_id, dish_name, ingredients)
             line_bot_api.reply_message(event.reply_token, flex_message)
         else:
             line_bot_api.reply_message(
