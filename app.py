@@ -97,7 +97,7 @@ def get_user_favorites():
 
 # ChatGPT 根據使用者需求和食材生成食譜回覆，並限制在 300 字內
 def generate_recipe_response(user_message, ingredients):
-    prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請生成一個適合的食譜，並按照以下格式輸出：\n\n料理名稱: [名稱]\n\n食譜: [食譜內容]。請字數限制在300字以內。"
+    prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請生成一個適合的食譜，並按照以下格式輸出：\n\n料理名稱: [名稱]\n\n食譜: [食譜內容]。請字數限制在500字以內。"
     
     response = openai.ChatCompletion.create(
         model="gpt-4",
@@ -135,8 +135,6 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredients):
     # 如果 dish_name 或 recipe_text 為空，提供預設值
     if not dish_name:
         dish_name = "未命名料理"
-    if not recipe_text:
-        recipe_text = "未提供食譜內容"
     recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text)
 
     # 確保 ingredients 是一個列表，並將其轉換為字符串
