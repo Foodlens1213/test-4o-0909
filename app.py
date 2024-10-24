@@ -97,7 +97,8 @@ def get_user_favorites():
 
 # ChatGPT 根據使用者需求和食材生成食譜回覆，並限制在 300 字內
 def generate_recipe_response(user_message, ingredients):
-    prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請根據這些食材生成一個適合的食譜，字數限制在300字以內。"
+    prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請生成一個適合的食譜，並按照以下格式輸出：\n\n料理名稱: [名稱]\n\n食譜: [食譜內容]。請字數限制在300字以內。"
+    
     response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=[
@@ -106,14 +107,24 @@ def generate_recipe_response(user_message, ingredients):
         ],
         max_tokens=500
     )
+    
     recipe = response.choices[0].message['content'].strip()
     
-    # 假設第一行是菜名，後面是食譜內容
-    #lines = recipe.split("\n")
-    #dish_name = lines[0]  # 第一行作為菜名
-    #recipe_text = "\n".join(lines[1:])  # 其餘行作為食譜內容
+    # 假設 ChatGPT 按照「料理名稱:」和「食譜:」格式返回
+    lines = recipe.split("\n")
+    
+    # 根據格式識別菜名和食譜
+    dish_name = None
+    recipe_text = None
+    
+    for line in lines:
+        if line.startswith("料理名稱:"):
+            dish_name = line.replace("料理名稱:", "").strip()
+        elif line.startswith("食譜:"):
+            recipe_text = line.replace("食譜:", "").strip()
+    
+    return dish_name, recipe_text
 
-    return recipe #dish_name, recipe_text
     
 import re
 def clean_text(text):
