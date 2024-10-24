@@ -89,12 +89,6 @@ def generate_recipe_response(user_message, ingredients):
     recipe = response.choices[0].message['content'].strip()
     return recipe
 
-import re
-
-def clean_text(text):
-    # 去除無效字符和表情符號
-    return re.sub(r'[^\w\s,.!?]', '', text)
-
 def create_flex_message(recipe_text, user_id, dish_name, ingredients):
     recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text)
 
@@ -228,18 +222,21 @@ def handle_postback(event):
     user_id = params.get('user_id')
 
     if action == 'new_recipe':
-        recipe_id = params.get('recipe_id')
-        recipe = get_recipe_from_db(recipe_id)
-        new_recipe = generate_recipe_response("新的食譜", recipe["recipe"])
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text=f"新的食譜：\n{new_recipe}")
-        )
+        # 從回傳的資料中提取食材
+        ingredients = params.get('ingredients').split(',')
+        user_message = "新的食譜"  # 可以自訂這個訊息
+        new_recipe = generate_recipe_response(user_message, ingredients)
+
+        # 建立並回傳包含新食譜的 Flex 訊息
+        flex_message = create_flex_message(new_recipe, user_id, "新的食譜", ingredients)
+        line_bot_api.reply_message(event.reply_token, flex_message)
+
     elif action == 'new_image':
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text="請上傳一張新圖片來辨識食材。")
         )
+
     elif action == 'save_favorite':
         recipe_id = params.get('recipe_id')
         recipe = get_recipe_from_db(recipe_id)
