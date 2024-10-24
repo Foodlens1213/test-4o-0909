@@ -1,7 +1,7 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, abort, jsonify
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, TextSendMessage, PostbackEvent, ImageMessage, FlexSendMessage
+from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage, FlexSendMessage, PostbackEvent
 import openai
 import os
 from google.cloud import vision
@@ -50,6 +50,7 @@ user_ingredients = {}
 # 儲存最愛食譜到 Firebase Firestore
 def save_recipe_to_db(user_id, dish_name, recipe_text):
     try:
+        # 手動生成一個新的 DocumentReference，這樣可以提前獲取 ID
         doc_ref = db.collection('recipes').document()
         doc_ref.set({
             'user_id': user_id,
@@ -74,7 +75,7 @@ def get_recipe_from_db(recipe_id):
         print(f"Firestore 查詢錯誤: {e}")
         return None
 
-# ChatGPT 根據使用者需求和食材生成食譜回覆
+# ChatGPT 根據使用者需求和食材生成食譜回覆，並限制在 300 字內
 def generate_recipe_response(user_message, ingredients):
     prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請根據這些食材生成一個適合的食譜，字數限制在300字以內。"
     response = openai.ChatCompletion.create(
@@ -88,10 +89,17 @@ def generate_recipe_response(user_message, ingredients):
     recipe = response.choices[0].message['content'].strip()
     return recipe
 
-# 建立多頁式訊息
+import re
+
+def clean_text(text):
+    # 去除無效字符和表情符號
+    return re.sub(r'[^\w\s,.!?]', '', text)
+
+# 建立多頁訊息，按鈕點擊後會變更顏色並回應
 def create_flex_message(recipe_text, user_id, dish_name, ingredients):
     recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text)
 
+    # 確保 ingredients 是一個列表，並將其轉換為字符串
     if isinstance(ingredients, list):
         ingredients_str = ','.join(ingredients)
     else:
@@ -132,7 +140,8 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredients):
                         "data": f"action=new_recipe&user_id={user_id}&ingredients={ingredients_str}"
                     },
                     "color": "#474242",
-                    "style": "primary"
+                    "style": "primary",
+                    "height": "sm"
                 },
                 {
                     "type": "button",
@@ -142,9 +151,15 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredients):
                         "data": f"action=save_favorite&recipe_id={recipe_id}"
                     },
                     "color": "#474242",
-                    "style": "primary"
+                    "style": "primary",
+                    "height": "sm"
                 }
             ]
+        },
+        "styles": {
+            "footer": {
+                "separator": True
+            }
         }
     }
 
@@ -154,27 +169,7 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredients):
     }
     return FlexSendMessage(alt_text="您的食譜", contents=carousel)
 
-# 從 Firebase Firestore 獲取使用者收藏的食譜
-@app.route('/get-favorites', methods=['GET'])
-def get_favorites():
-    user_id = request.args.get('user_id')
-    if not user_id:
-        return jsonify({"error": "Missing user_id"}), 400
-
-    try:
-        recipes_ref = db.collection('recipes').where('user_id', '==', user_id)
-        docs = recipes_ref.stream()
-
-        favorites = []
-        for doc in docs:
-            favorites.append(doc.to_dict())
-
-        return jsonify({"favorites": favorites}), 200
-    except Exception as e:
-        print(f"查詢錯誤: {e}")
-        return jsonify({"error": str(e)}), 500
-
-# 處理圖片訊息
+# 處理圖片訊息，進行 Google Cloud Vision 的物體偵測（Label Detection）
 @handler.add(MessageEvent, message=ImageMessage)
 def handle_image_message(event):
     message_id = event.message.id
@@ -241,24 +236,30 @@ def handle_postback(event):
     user_id = params.get('user_id')
 
     if action == 'new_recipe':
-        ingredients = params.get('ingredients')
-        new_recipe = generate_recipe_response("新的食譜", ingredients)
+        # 回覆"沒問題，請稍後~"
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text=f"新的食譜：\n{new_recipe}")
+            TextSendMessage(text="沒問題，請稍後~")
         )
+        # 生成新的食譜
+        ingredients = params.get('ingredients')
+        new_recipe = generate_recipe_response("新的食譜", ingredients)
+        flex_message = create_flex_message(new_recipe, user_id, "新食譜", ingredients)
+        line_bot_api.push_message(user_id, flex_message)
+    
     elif action == 'new_image':
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text="請上傳一張新圖片來辨識食材。")
         )
+    
     elif action == 'save_favorite':
         recipe_id = params.get('recipe_id')
         recipe = get_recipe_from_db(recipe_id)
         save_recipe_to_db(user_id, recipe['dish'], recipe['recipe'])
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text="已將此食譜加入您的最愛。")
+            TextSendMessage(text="已加入我的最愛~")
         )
 
 # 處理文字訊息，並生成多頁式食譜回覆
