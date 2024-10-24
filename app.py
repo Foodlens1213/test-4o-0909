@@ -107,7 +107,28 @@ def generate_recipe_response(user_message, ingredients):
         max_tokens=500
     )
     recipe = response.choices[0].message['content'].strip()
-    return recipe
+    
+    # 假設 ChatGPT 返回的內容是類似這樣：
+    # 料理名稱: 番茄義大利麵
+    # 食譜: 步驟1，步驟2……
+    dish_name = None
+    recipe_text = None
+    
+    recipe_parts = recipe.split("\n\n")
+    for part in recipe_parts:
+        if "料理名稱:" in part:
+            dish_name = part.replace("料理名稱:", "").strip()
+        elif "食譜:" in part:
+            recipe_text = part.replace("食譜:", "").strip()
+
+    # 如果沒有解析到，使用默認值
+    if not dish_name:
+        dish_name = "未命名料理"
+    if not recipe_text:
+        recipe_text = "未提供食譜內容"
+
+    return dish_name, recipe_text
+
 
 import re
 def clean_text(text):
@@ -289,8 +310,10 @@ def handle_message(event):
     if "份" in user_message or "人" in user_message:
         ingredients = user_ingredients.get(user_id, None)
         if ingredients:
-            recipe_response = generate_recipe_response(user_message, ingredients)
-            flex_message = create_flex_message(recipe_response, user_id, "焗烤料理", ingredients)
+            # 生成料理名稱和食譜內容
+            dish_name, recipe_response = generate_recipe_response(user_message, ingredients)
+            # 使用生成的料理名稱而非硬編碼的值
+            flex_message = create_flex_message(recipe_response, user_id, dish_name, ingredients)
             line_bot_api.reply_message(event.reply_token, flex_message)
         else:
             line_bot_api.reply_message(
