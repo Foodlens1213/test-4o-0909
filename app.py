@@ -123,12 +123,6 @@ def generate_recipe_response(user_message, ingredients):
         elif part.startswith("食譜:"):
             recipe_text = part.replace("食譜:", "").strip()
 
-    # 如果任一部分沒有正確抓取，提供默認值
-    if not dish_name:
-        dish_name = "未命名料理"
-    if not recipe_text:
-        recipe_text = "未提供食譜內容"
-
     return dish_name, recipe_text
     
 import re
@@ -165,9 +159,9 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredients):
                     "margin": "md",
                     "size": "sm"
                 },
-                                {
+                {
                     "type": "text",
-                    "text": f"食譜內容: {recipe_text[:1000]}",  # 截取過長的文字
+                    "text": f"食譜內容: {recipe_text}",  # 截取過長的文字
                     "wrap": True,
                     "margin": "md",
                     "size": "sm"
