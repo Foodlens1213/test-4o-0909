@@ -17,12 +17,12 @@
     <script>
         // Firebase 設定
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            apiKey: "AIzaSyArYFpAk7EvMSTtbEt7rbMRb6cUEnGEqmU",
+            authDomain: "foodlens-d855d.firebaseapp.com",
+            projectId: "foodlens-d855d",
+            storageBucket: "foodlens-d855d.appspot.com",
+            messagingSenderId: "615735131157",
+            appId: "1:615735131157:web:bcaf7a030b802c21d2221c",
         };
 
         // 初始化 Firebase
@@ -32,7 +32,7 @@
 
         // 初始化 LIFF
         async function initializeLiff() {
-            await liff.init({ liffId: "YOUR_LIFF_ID" });  // 替換成您的 LIFF ID
+            await liff.init({ liffId: "2006463836-0VmgLQA8" });  // 替換成您的 LIFF ID
             if (!liff.isLoggedIn()) {
                 liff.login();  // 未登入則跳轉登入
             } else {
