@@ -4,18 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的最愛食譜</title>
-    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js"></script>
-    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
     <h1>我的最愛食譜</h1>
     <div id="recipes"></div>
 
     <script>
-        // Firebase 設定
+         // Firebase 設定
         const firebaseConfig = {
             apiKey: "AIzaSyArYFpAk7EvMSTtbEt7rbMRb6cUEnGEqmU",
             authDomain: "foodlens-d855d.firebaseapp.com",
@@ -25,50 +23,36 @@
             appId: "1:615735131157:web:bcaf7a030b802c21d2221c",
         };
 
-        // 初始化 Firebase
-        const app = firebase.initializeApp(firebaseConfig);
+        firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const auth = firebase.auth();
 
-        // 初始化 LIFF
-        async function initializeLiff() {
-            await liff.init({ liffId: "2006463836-0VmgLQA8" });  // 替換成您的 LIFF ID
-            if (!liff.isLoggedIn()) {
-                liff.login();  // 未登入則跳轉登入
-            } else {
-                const profile = await liff.getProfile();
-                const userId = profile.userId;  // 使用者的 LINE User ID
+        // 用戶登录並获取收藏的食谱
+        auth.signInAnonymously().then(() => {
+            const user = auth.currentUser;
+            const userId = user.uid;
 
-                // 從 Firestore 中讀取收藏的食譜
-                db.collection('favorites').where('user_id', '==', userId)
-                    .get()
-                    .then((querySnapshot) => {
-                        const recipesDiv = document.getElementById('recipes');
-                        if (querySnapshot.empty) {
-                            recipesDiv.innerHTML = "<p>您還沒有收藏任何食譜。</p>";
-                        } else {
-                            querySnapshot.forEach((doc) => {
-                                const recipe = doc.data();
-                                const recipeHtml = `
-                                    <div>
-                                        <h3>${recipe.dish}</h3>
-                                        <p>${recipe.recipe}</p>
-                                        <a href="${recipe.link}" target="_blank">觀看影片</a>
-                                    </div>
-                                    <hr>
-                                `;
-                                recipesDiv.innerHTML += recipeHtml;
-                            });
-                        }
-                    })
-                    .catch((error) => {
-                        console.error("Error getting recipes: ", error);
-                    });
-            }
-        }
-
-        // 初始化 LIFF 應用
-        initializeLiff();
+            fetch(`/api/favorites?user_id=${userId}`)
+                .then(response => response.json())
+                .then(data => {
+                    const recipesDiv = document.getElementById('recipes');
+                    if (data.length === 0) {
+                        recipesDiv.innerHTML = "<p>您還沒有收藏任何食譜。</p>";
+                    } else {
+                        data.forEach(recipe => {
+                            const recipeHtml = `
+                                <div>
+                                    <h3>${recipe.dish}</h3>
+                                    <p>${recipe.recipe}</p>
+                                </div>
+                                <hr>
+                            `;
+                            recipesDiv.innerHTML += recipeHtml;
+                        });
+                    }
+                })
+                .catch(error => console.error("Error loading favorites:", error));
+        }).catch(error => console.error("Authentication error:", error));
     </script>
 </body>
 </html>
