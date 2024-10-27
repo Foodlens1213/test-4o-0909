@@ -4,34 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的最愛食譜</title>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js"></script>
 </head>
 <body>
     <h1>我的最愛食譜</h1>
     <div id="recipes"></div>
 
     <script>
-         // Firebase 設定
-        const firebaseConfig = {
-            apiKey: "AIzaSyArYFpAk7EvMSTtbEt7rbMRb6cUEnGEqmU",
-            authDomain: "foodlens-d855d.firebaseapp.com",
-            projectId: "foodlens-d855d",
-            storageBucket: "foodlens-d855d.appspot.com",
-            messagingSenderId: "615735131157",
-            appId: "1:615735131157:web:bcaf7a030b802c21d2221c",
-        };
+        // 獲取 URL 中的 user_id 參數
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('user_id');
 
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const auth = firebase.auth();
-
-        // 用戶登录並获取收藏的食谱
-        auth.signInAnonymously().then(() => {
-            const user = auth.currentUser;
-            const userId = user.uid;
-
+        if (userId) {
             fetch(`/api/favorites?user_id=${userId}`)
                 .then(response => response.json())
                 .then(data => {
@@ -52,7 +35,9 @@
                     }
                 })
                 .catch(error => console.error("Error loading favorites:", error));
-        }).catch(error => console.error("Authentication error:", error));
+        } else {
+            document.getElementById('recipes').innerHTML = "<p>無法獲取用戶ID，請重新登入。</p>";
+        }
     </script>
 </body>
 </html>
