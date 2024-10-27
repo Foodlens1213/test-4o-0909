@@ -1,43 +1,44 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的最愛食譜</title>
+    <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script> <!-- 加入 LIFF SDK -->
 </head>
 <body>
     <h1>我的最愛食譜</h1>
     <div id="recipes"></div>
 
     <script>
-        // 獲取 URL 中的 user_id 參數
-        const urlParams = new URLSearchParams(window.location.search);
-        const userId = urlParams.get('user_id');
+        async function main() {
+            await liff.init({ liffId: "YOUR_LIFF_ID" }); // 使用您的 LIFF ID 初始化
+            if (liff.isLoggedIn()) {
+                const profile = await liff.getProfile();
+                const userId = profile.userId;
 
-        if (userId) {
-            fetch(`/api/favorites?user_id=${userId}`)
-                .then(response => response.json())
-                .then(data => {
-                    const recipesDiv = document.getElementById('recipes');
-                    if (data.length === 0) {
-                        recipesDiv.innerHTML = "<p>您還沒有收藏任何食譜。</p>";
-                    } else {
-                        data.forEach(recipe => {
-                            const recipeHtml = `
-                                <div>
-                                    <h3>${recipe.dish}</h3>
-                                    <p>${recipe.recipe}</p>
-                                </div>
-                                <hr>
-                            `;
-                            recipesDiv.innerHTML += recipeHtml;
-                        });
-                    }
-                })
-                .catch(error => console.error("Error loading favorites:", error));
-        } else {
-            document.getElementById('recipes').innerHTML = "<p>無法獲取用戶ID，請重新登入。</p>";
+                fetch(`/api/favorites?user_id=${userId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const recipesDiv = document.getElementById('recipes');
+                        if (data.length === 0) {
+                            recipesDiv.innerHTML = "<p>您還沒有收藏任何食譜。</p>";
+                        } else {
+                            data.forEach(recipe => {
+                                const recipeHtml = `
+                                    <div>
+                                        <h3>${recipe.dish}</h3>
+                                        <p>${recipe.recipe}</p>
+                                    </div>
+                                    <hr>
+                                `;
+                                recipesDiv.innerHTML += recipeHtml;
+                            });
+                        }
+                    })
+                    .catch(error => console.error("Error loading favorites:", error));
+            } else {
+                liff.login(); // 如果未登入則進行登入
+            }
         }
+        main();
     </script>
 </body>
-</html>
