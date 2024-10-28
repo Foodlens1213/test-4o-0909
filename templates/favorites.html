@@ -4,72 +4,85 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的最愛食譜</title>
-    <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
     <style>
+        /* 基本樣式設置 */
         body {
             font-family: Arial, sans-serif;
             margin: 0;
-            padding: 0;
-            background-color: #f7f7f7;
-            color: #333;
+            padding: 20px;
+            background-color: #f5f5f5;
         }
+
         h1 {
             text-align: center;
-            padding: 20px;
-            background-color: #4CAF50;
-            color: #fff;
-            margin: 0;
+            color: #333;
         }
-        #recipes {
+
+        /* 卡片容器的網格設置 */
+        .card-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
             max-width: 800px;
-            margin: 20px auto;
-            padding: 20px;
+            margin: 0 auto;
+        }
+
+        /* 單個卡片的樣式 */
+        .card {
             background-color: #fff;
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-        .recipe {
-            padding: 10px 0;
-        }
-        .recipe h3 {
-            color: #333;
-            margin: 0;
-            font-size: 1.2em;
-        }
-        .recipe-content {
-            margin: 8px 0;
-            color: #555;
-            display: none; /* 隱藏完整內容，點擊按鈕後顯示 */
-        }
-        .recipe-buttons {
+            overflow: hidden;
             display: flex;
-            gap: 10px;
+            flex-direction: column;
+            padding: 15px;
         }
-        .button {
-            padding: 8px 12px;
-            color: #fff;
-            background-color: #4CAF50;
+
+        .card h3 {
+            font-size: 18px;
+            margin: 0 0 10px;
+            color: #333;
+        }
+
+        .card p {
+            font-size: 14px;
+            color: #666;
+            flex-grow: 1;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .card-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+
+        .card-buttons button {
+            background-color: #007bff;
+            color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 5px;
+            padding: 5px 10px;
             cursor: pointer;
+            font-size: 14px;
         }
-        .button.delete {
-            background-color: #f44336;
-        }
-        hr {
-            border: none;
-            border-top: 1px solid #ddd;
-            margin: 20px 0;
+
+        .card-buttons button.delete {
+            background-color: #dc3545;
         }
     </style>
 </head>
 <body>
     <h1>我的最愛食譜</h1>
-    <div id="recipes"></div>
+    <div class="card-container" id="recipes"></div>
 
+    <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
     <script>
         async function main() {
-            await liff.init({ liffId: "2006463836-0VmgLQA8" });
+            await liff.init({ liffId: "2006463836-0VmgLQA8" }); // 使用您的 LIFF ID 初始化
             if (liff.isLoggedIn()) {
                 const profile = await liff.getProfile();
                 const userId = profile.userId;
@@ -83,15 +96,14 @@
                         } else {
                             data.forEach(recipe => {
                                 const recipeHtml = `
-                                    <div class="recipe">
+                                    <div class="card">
                                         <h3>${recipe.dish}</h3>
-                                        <p class="recipe-content">${recipe.recipe}</p>
-                                        <div class="recipe-buttons">
-                                            <button class="button toggle" onclick="toggleContent(this)">查看更多</button>
-                                            <button class="button delete" onclick="deleteRecipe('${recipe.id}', this)">刪除</button>
+                                        <p>${recipe.recipe}</p>
+                                        <div class="card-buttons">
+                                            <button onclick="viewMore('${recipe.recipe}')">查看更多</button>
+                                            <button class="delete" onclick="deleteRecipe('${recipe.id}')">刪除</button>
                                         </div>
                                     </div>
-                                    <hr>
                                 `;
                                 recipesDiv.innerHTML += recipeHtml;
                             });
@@ -99,30 +111,24 @@
                     })
                     .catch(error => console.error("Error loading favorites:", error));
             } else {
-                liff.login();
+                liff.login(); // 如果未登入則進行登入
             }
         }
 
-        function toggleContent(button) {
-            const content = button.parentElement.previousElementSibling;
-            if (content.style.display === "none" || content.style.display === "") {
-                content.style.display = "block";
-                button.textContent = "收起";
-            } else {
-                content.style.display = "none";
-                button.textContent = "查看更多";
-            }
+        // 查看更多功能
+        function viewMore(content) {
+            alert(content); // 可更改為彈出框顯示更多內容
         }
 
-        function deleteRecipe(recipeId, button) {
+        // 刪除食譜功能
+        function deleteRecipe(recipeId) {
             fetch(`/api/favorites?recipe_id=${recipeId}`, { method: 'DELETE' })
                 .then(response => {
                     if (response.ok) {
-                        const recipeDiv = button.closest('.recipe');
-                        recipeDiv.nextElementSibling.remove(); // 移除 hr
-                        recipeDiv.remove(); // 移除該食譜元素
+                        alert("食譜已刪除！");
+                        location.reload(); // 刷新頁面
                     } else {
-                        console.error("Failed to delete recipe");
+                        alert("刪除失敗，請重試。");
                     }
                 })
                 .catch(error => console.error("Error deleting recipe:", error));
