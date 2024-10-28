@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的最愛食譜</title>
-    <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script> <!-- 加入 LIFF SDK -->
+    <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -36,9 +36,25 @@
             margin: 0;
             font-size: 1.2em;
         }
-        .recipe p {
+        .recipe-content {
             margin: 8px 0;
             color: #555;
+            display: none; /* 隱藏完整內容，點擊按鈕後顯示 */
+        }
+        .recipe-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .button {
+            padding: 8px 12px;
+            color: #fff;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .button.delete {
+            background-color: #f44336;
         }
         hr {
             border: none;
@@ -53,7 +69,7 @@
 
     <script>
         async function main() {
-            await liff.init({ liffId: "2006463836-0VmgLQA8" }); // 使用您的 LIFF ID 初始化
+            await liff.init({ liffId: "2006463836-0VmgLQA8" });
             if (liff.isLoggedIn()) {
                 const profile = await liff.getProfile();
                 const userId = profile.userId;
@@ -69,7 +85,11 @@
                                 const recipeHtml = `
                                     <div class="recipe">
                                         <h3>${recipe.dish}</h3>
-                                        <p>${recipe.recipe}</p>
+                                        <p class="recipe-content">${recipe.recipe}</p>
+                                        <div class="recipe-buttons">
+                                            <button class="button toggle" onclick="toggleContent(this)">查看更多</button>
+                                            <button class="button delete" onclick="deleteRecipe('${recipe.id}', this)">刪除</button>
+                                        </div>
                                     </div>
                                     <hr>
                                 `;
@@ -79,9 +99,35 @@
                     })
                     .catch(error => console.error("Error loading favorites:", error));
             } else {
-                liff.login(); // 如果未登入則進行登入
+                liff.login();
             }
         }
+
+        function toggleContent(button) {
+            const content = button.parentElement.previousElementSibling;
+            if (content.style.display === "none" || content.style.display === "") {
+                content.style.display = "block";
+                button.textContent = "收起";
+            } else {
+                content.style.display = "none";
+                button.textContent = "查看更多";
+            }
+        }
+
+        function deleteRecipe(recipeId, button) {
+            fetch(`/api/favorites?recipe_id=${recipeId}`, { method: 'DELETE' })
+                .then(response => {
+                    if (response.ok) {
+                        const recipeDiv = button.closest('.recipe');
+                        recipeDiv.nextElementSibling.remove(); // 移除 hr
+                        recipeDiv.remove(); // 移除該食譜元素
+                    } else {
+                        console.error("Failed to delete recipe");
+                    }
+                })
+                .catch(error => console.error("Error deleting recipe:", error));
+        }
+
         main();
     </script>
 </body>
