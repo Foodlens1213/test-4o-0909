@@ -10,12 +10,38 @@
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 20px;
-            background-color: #f5f5f5;
+            background-color: #EEE8DC;
         }
 
         h1 {
             text-align: center;
             color: #333;
+        }
+
+        /* 搜尋框樣式 */
+        .search-bar {
+            max-width: 400px;
+            margin: 20px auto;
+            display: flex;
+            justify-content: center;
+        }
+
+        .search-bar input {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #474242;
+            border-radius: 5px 0 0 5px;
+            flex: 1;
+        }
+
+        .search-bar button {
+            padding: 10px;
+            font-size: 16px;
+            background-color: #474242;
+            color: #fff;
+            border: none;
+            border-radius: 0 5px 5px 0;
+            cursor: pointer;
         }
 
         /* 卡片容器的網格設置 */
@@ -29,9 +55,10 @@
 
         /* 單個卡片的樣式 */
         .card {
-            background-color: #fff;
+            background-color: #F6F3EB;
+            border: 1px solid #474242;
             border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 8px rgba(71, 66, 66, 0.2);
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -77,10 +104,19 @@
 </head>
 <body>
     <h1>我的最愛食譜</h1>
+
+    <!-- 搜尋框 -->
+    <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="搜尋食譜名稱...">
+        <button onclick="filterRecipes()">搜尋</button>
+    </div>
+
     <div class="card-container" id="recipes"></div>
 
     <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
     <script>
+        let allRecipes = []; // 用於儲存所有食譜的全域變量
+
         async function main() {
             await liff.init({ liffId: "2006463836-0VmgLQA8" }); // 使用您的 LIFF ID 初始化
             if (liff.isLoggedIn()) {
@@ -90,29 +126,44 @@
                 fetch(`/api/favorites?user_id=${userId}`)
                     .then(response => response.json())
                     .then(data => {
-                        const recipesDiv = document.getElementById('recipes');
-                        if (data.length === 0) {
-                            recipesDiv.innerHTML = "<p>您還沒有收藏任何食譜。</p>";
-                        } else {
-                            data.forEach(recipe => {
-                                const recipeHtml = `
-                                    <div class="card">
-                                        <h3>${recipe.dish}</h3>
-                                        <p>${recipe.recipe}</p>
-                                        <div class="card-buttons">
-                                            <button onclick="viewMore('${recipe.recipe}')">查看更多</button>
-                                            <button class="delete" onclick="deleteRecipe('${recipe.id}')">刪除</button>
-                                        </div>
-                                    </div>
-                                `;
-                                recipesDiv.innerHTML += recipeHtml;
-                            });
-                        }
+                        allRecipes = data; // 儲存所有食譜以便搜尋使用
+                        displayRecipes(allRecipes);
                     })
                     .catch(error => console.error("Error loading favorites:", error));
             } else {
                 liff.login(); // 如果未登入則進行登入
             }
+        }
+
+        // 顯示食譜的函數
+        function displayRecipes(recipes) {
+            const recipesDiv = document.getElementById('recipes');
+            recipesDiv.innerHTML = ""; // 清空內容
+
+            if (recipes.length === 0) {
+                recipesDiv.innerHTML = "<p>未找到符合的食譜。</p>";
+            } else {
+                recipes.forEach(recipe => {
+                    const recipeHtml = `
+                        <div class="card">
+                            <h3>${recipe.dish}</h3>
+                            <p>${recipe.recipe}</p>
+                            <div class="card-buttons">
+                                <button onclick="viewMore('${recipe.recipe}')">查看更多</button>
+                                <button class="delete" onclick="deleteRecipe('${recipe.id}')">刪除</button>
+                            </div>
+                        </div>
+                    `;
+                    recipesDiv.innerHTML += recipeHtml;
+                });
+            }
+        }
+
+        // 搜尋食譜名稱的函數
+        function filterRecipes() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const filteredRecipes = allRecipes.filter(recipe => recipe.dish.toLowerCase().includes(query));
+            displayRecipes(filteredRecipes);
         }
 
         // 查看更多功能
