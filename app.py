@@ -344,7 +344,7 @@ def handle_message(event):
             TextSendMessage(text="請告訴我您想要做什麼料理及份數。")
         )
 
-# 刪除用戶的收藏食譜 (API)
+# 刪除收藏食譜的 API
 @app.route('/api/favorites', methods=['DELETE'])
 def delete_user_favorite():
     recipe_id = request.args.get('recipe_id')
@@ -352,9 +352,9 @@ def delete_user_favorite():
         return jsonify({'error': 'Missing recipe_id'}), 400
 
     try:
-        # 從 Firestore 刪除指定的食譜
+        # 刪除指定的食譜文件
         db.collection('recipes').document(recipe_id).delete()
-        return jsonify({'success': True}), 200
+        return jsonify({'message': 'Recipe deleted successfully'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
