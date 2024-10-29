@@ -344,17 +344,28 @@ def handle_message(event):
             TextSendMessage(text="請告訴我您想要做什麼料理及份數。")
         )
 
-# 刪除收藏食譜的 API
+# 顯示特定食譜的詳細內容 (供 "查看更多" 使用)
+@app.route('/api/favorites/<recipe_id>', methods=['GET'])
+def get_recipe_detail(recipe_id):
+    try:
+        recipe_doc = db.collection('recipes').document(recipe_id).get()
+        if recipe_doc.exists:
+            return jsonify(recipe_doc.to_dict()), 200
+        else:
+            return jsonify({'error': 'Recipe not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# 刪除食譜 (供 "刪除" 使用)
 @app.route('/api/favorites', methods=['DELETE'])
-def delete_user_favorite():
+def delete_favorite():
     recipe_id = request.args.get('recipe_id')
     if not recipe_id:
         return jsonify({'error': 'Missing recipe_id'}), 400
 
     try:
-        # 刪除指定的食譜文件
         db.collection('recipes').document(recipe_id).delete()
-        return jsonify({'message': 'Recipe deleted successfully'}), 200
+        return jsonify({'status': 'success'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
