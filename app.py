@@ -90,11 +90,12 @@ def get_user_favorites():
     try:
         recipes_ref = db.collection('recipes').where('user_id', '==', user_id)
         docs = recipes_ref.stream()
-        favorites = [doc.to_dict() for doc in docs]
+        # 將 Firestore 文檔的 id 作為 `id` 屬性返回
+        favorites = [{'id': doc.id, **doc.to_dict()} for doc in docs]
         return jsonify(favorites), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
+        
 def generate_recipe_response(user_message, ingredients):
     prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請按照以下格式生成一個適合的食譜：\n\n食譜名稱: [食譜名稱]\n食材: [食材列表]\n步驟: [具體步驟]，字數限制在300字以內。"
     response = openai.ChatCompletion.create(
