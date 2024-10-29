@@ -32,6 +32,7 @@
             max-width: 400px;
             margin: 20px auto;
             display: flex;
+            border: 2.5px solid #474242;
             justify-content: center;
         }
 
@@ -110,10 +111,41 @@
             background-color: #dc3545;
         }
 
-        .tags, .note {
-            margin-top: 10px;
-            font-size: 14px;
-            color: #474242;
+        /* 模態框樣式 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding-top: 60px;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 8px;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
         }
     </style>
 </head>
@@ -130,6 +162,15 @@
     </div>
 
     <div class="card-container" id="recipes"></div>
+
+    <!-- 模態框 -->
+    <div id="recipeModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h3 id="modalDishName"></h3>
+            <p id="modalRecipeContent"></p>
+        </div>
+    </div>
 
     <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
     <script>
@@ -156,29 +197,29 @@
             }
         }
 
-       // 顯示食譜的函數
-function displayRecipes(recipes) {
-    const recipesDiv = document.getElementById('recipes');
-    recipesDiv.innerHTML = ""; // 清空內容
+        // 顯示食譜的函數
+        function displayRecipes(recipes) {
+            const recipesDiv = document.getElementById('recipes');
+            recipesDiv.innerHTML = ""; // 清空內容
 
-    if (recipes.length === 0) {
-        recipesDiv.innerHTML = "<p>未找到符合的食譜。</p>";
-    } else {
-        recipes.forEach(recipe => {
-            const recipeHtml = `
-                <div class="card">
-                    <h3>${recipe.dish}</h3>
-                    <p>${recipe.recipe}</p>
-                    <div class="card-buttons">
-                        <button class="delete" onclick="deleteRecipe('${recipe.id}')">刪除</button>
-                    </div>
-                </div>
-            `;
-            recipesDiv.innerHTML += recipeHtml;
-        });
-    }
-}
-
+            if (recipes.length === 0) {
+                recipesDiv.innerHTML = "<p>未找到符合的食譜。</p>";
+            } else {
+                recipes.forEach(recipe => {
+                    const recipeHtml = `
+                        <div class="card">
+                            <h3>${recipe.dish}</h3>
+                            <p>${recipe.recipe}</p>
+                            <div class="card-buttons">
+                                <button onclick="viewMore('${recipe.dish}', '${recipe.recipe}')">查看更多</button>
+                                <button class="delete" onclick="deleteRecipe('${recipe.id}')">刪除</button>
+                            </div>
+                        </div>
+                    `;
+                    recipesDiv.innerHTML += recipeHtml;
+                });
+            }
+        }
 
         // 搜尋食譜名稱的函數
         function filterRecipes() {
@@ -187,19 +228,38 @@ function displayRecipes(recipes) {
             displayRecipes(filteredRecipes);
         }
 
+        // 查看更多功能 - 顯示模態框
+        function viewMore(dishName, recipeContent) {
+            document.getElementById("modalDishName").textContent = dishName;
+            document.getElementById("modalRecipeContent").textContent = recipeContent;
+            document.getElementById("recipeModal").style.display = "block";
+        }
+
+        // 關閉模態框
+        function closeModal() {
+            document.getElementById("recipeModal").style.display = "none";
+        }
+
         // 刪除食譜功能
         function deleteRecipe(recipeId) {
             fetch(`/api/favorites?recipe_id=${recipeId}`, { method: 'DELETE' })
                 .then(response => {
                     if (response.ok) {
                         alert("食譜已刪除！");
-                        allRecipes = allRecipes.filter(recipe => recipe.id !== recipeId); // 更新本地數據
-                        displayRecipes(allRecipes); // 更新顯示
+                        location.reload(); // 刷新頁面
                     } else {
                         alert("刪除失敗，請重試。");
                     }
                 })
                 .catch(error => console.error("Error deleting recipe:", error));
+        }
+
+        // 點擊模態框外部時關閉模態框
+        window.onclick = function(event) {
+            const modal = document.getElementById("recipeModal");
+            if (event.target === modal) {
+                modal.style.display = "none";
+            }
         }
 
         main();
