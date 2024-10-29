@@ -154,13 +154,13 @@
             displayRecipes(filteredRecipes);
         }
         // 查看更多功能
-        function viewMore(content) {
-            alert(content); // 可更改為彈出框顯示更多內容
-        }
+        //function viewMore(content) {
+          //  alert(content); // 可更改為彈出框顯示更多內容
+        //}
 
         // 刪除食譜功能
-        function deleteRecipe(recipeId) {
-            fetch(`/api/favorites?recipe_id=${recipeId}`, { method: 'DELETE' })
+        function delete_user_favorite(recipe_Id) {
+            fetch(`/api/favorites?recipe_id=${recipe_Id}`, { method: 'DELETE' })
                 .then(response => {
                     if (response.ok) {
                         alert("食譜已刪除！");
