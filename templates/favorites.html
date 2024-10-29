@@ -156,28 +156,29 @@
             }
         }
 
-        // 顯示食譜的函數
-        function displayRecipes(recipes) {
-            const recipesDiv = document.getElementById('recipes');
-            recipesDiv.innerHTML = ""; // 清空內容
+       // 顯示食譜的函數
+function displayRecipes(recipes) {
+    const recipesDiv = document.getElementById('recipes');
+    recipesDiv.innerHTML = ""; // 清空內容
 
-            if (recipes.length === 0) {
-                recipesDiv.innerHTML = "<p>未找到符合的食譜。</p>";
-            } else {
-                recipes.forEach(recipe => {
-                    const recipeHtml = `
-                        <div class="card">
-                            <h3>${recipe.dish}</h3>
-                            <p>${recipe.recipe}</p>
-                            <div class="card-buttons">
-                                <button class="delete" onclick="deleteRecipe('${recipe.id}')">刪除</button>
-                            </div>
-                        </div>
-                    `;
-                    recipesDiv.innerHTML += recipeHtml;
-                });
-            }
-        }
+    if (recipes.length === 0) {
+        recipesDiv.innerHTML = "<p>未找到符合的食譜。</p>";
+    } else {
+        recipes.forEach(recipe => {
+            const recipeHtml = `
+                <div class="card">
+                    <h3>${recipe.dish}</h3>
+                    <p>${recipe.recipe}</p>
+                    <div class="card-buttons">
+                        <button class="delete" onclick="deleteRecipe('${recipe.id}')">刪除</button>
+                    </div>
+                </div>
+            `;
+            recipesDiv.innerHTML += recipeHtml;
+        });
+    }
+}
+
 
         // 搜尋食譜名稱的函數
         function filterRecipes() {
