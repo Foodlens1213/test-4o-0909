@@ -169,10 +169,7 @@
                         <div class="card">
                             <h3>${recipe.dish}</h3>
                             <p>${recipe.recipe}</p>
-                            <div class="note"><strong>備註:</strong> ${recipe.note || ""}</div>
-                            <div class="tags"><strong>標籤:</strong> ${recipe.tags ? recipe.tags.join(", ") : ""}</div>
                             <div class="card-buttons">
-                                <button onclick="viewMore('${recipe.id}')">查看更多</button>
                                 <button class="delete" onclick="deleteRecipe('${recipe.id}')">刪除</button>
                             </div>
                         </div>
@@ -189,27 +186,14 @@
             displayRecipes(filteredRecipes);
         }
 
-        // 查看更多功能
-        function viewMore(recipeId) {
-            fetch(`/api/favorites/${recipeId}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        alert("無法顯示詳細內容。");
-                    } else {
-                        alert(`料理名稱：${data.dish}\n\n食譜內容：${data.recipe}`);
-                    }
-                })
-                .catch(error => console.error("Error loading recipe details:", error));
-        }
-
         // 刪除食譜功能
         function deleteRecipe(recipeId) {
             fetch(`/api/favorites?recipe_id=${recipeId}`, { method: 'DELETE' })
                 .then(response => {
                     if (response.ok) {
                         alert("食譜已刪除！");
-                        location.reload(); // 刷新頁面
+                        allRecipes = allRecipes.filter(recipe => recipe.id !== recipeId); // 更新本地數據
+                        displayRecipes(allRecipes); // 更新顯示
                     } else {
                         alert("刪除失敗，請重試。");
                     }
