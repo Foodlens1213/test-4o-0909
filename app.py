@@ -359,14 +359,14 @@ def get_recipe_detail(recipe_id):
 
 # API: 刪除食譜
 @app.route('/api/favorites', methods=['DELETE'])
-def delete_favorite():
+def delete_recipe():
     recipe_id = request.args.get('recipe_id')
     if not recipe_id:
         return jsonify({'error': 'Missing recipe_id'}), 400
 
     try:
         db.collection('recipes').document(recipe_id).delete()
-        return jsonify({'status': 'success'}), 200
+        return jsonify({'message': 'Recipe deleted successfully'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
