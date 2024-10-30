@@ -55,6 +55,7 @@ def save_recipe_to_db(user_id, dish_name, recipe_text):
         doc_ref.set({
             'user_id': user_id,
             'dish': dish_name,
+            'ingredient': ingredient_text,
             'recipe': recipe_text
         })
         return doc_ref.id  # 返回生成的文檔 ID
@@ -112,6 +113,7 @@ def generate_recipe_response(user_message, ingredients):
     print(f"ChatGPT 返回的內容: {recipe}")
 
     dish_name = None
+    ingredient_text = None
     recipe_text = None
 
     # 修改解析邏輯，支持新的標籤
@@ -120,6 +122,8 @@ def generate_recipe_response(user_message, ingredients):
         for part in recipe_parts:
             if "食譜名稱:" in part:
                 dish_name = part.replace("食譜名稱:", "").strip()
+            elif "食材:" in part:
+                ingredient_text = part.replace("食材:", "").strip()
             elif "步驟:" in part:
                 recipe_text = part.replace("步驟:", "").strip()
 
@@ -129,13 +133,16 @@ def generate_recipe_response(user_message, ingredients):
     # 如果沒有解析到，設置默認值
     if not dish_name:
         dish_name = "未命名料理"
+    if not ingredient_text:
+        ingredient_text = "未提供食材"
     if not recipe_text:
         recipe_text = "未提供食譜內容"
 
     print(f"解析出的料理名稱: {dish_name}")
+    print(f"解析出的食材: {ingredient_text}")
     print(f"解析出的食譜內容: {recipe_text}")
 
-    return dish_name, recipe_text
+    return dish_name,ingredient_text,recipe_text
 
 
 import re
@@ -165,6 +172,13 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredients):
                     "wrap": True,
                     "weight": "bold",
                     "size": "xl"
+                },
+                {
+                    "type": "text",
+                    "text": f"食材：{ingredient_text}",# 顯示食材
+                    "wrap": True,
+                    "margin": "md",
+                    "size": "sm"
                 },
                 {
                     "type": "text",
@@ -324,8 +338,8 @@ def handle_postback(event):
 def generate_multiple_recipes(dish_count, ingredients):
     recipes = []
     for _ in range(dish_count):
-        dish_name, recipe_text = generate_recipe_response("", ingredients)
-        recipes.append((dish_name, recipe_text))
+        dish_name,ingredient_text,recipe_text = generate_recipe_response("", ingredients)
+        recipes.append((dish_name,ingredient_text,recipe_text))
     return recipes
 
 # 處理文字訊息，並生成多頁式食譜回覆
@@ -344,7 +358,7 @@ def handle_message(event):
             recipes = generate_multiple_recipes(dish_count, ingredients)
 
             # 準備多頁式回覆
-            flex_messages = [create_flex_message(recipe_text, user_id, dish_name, ingredients) for dish_name, recipe_text in recipes]
+            flex_messages = [create_flex_message(recipe_text, user_id, dish_name, ingredient_text,ingredients) for dish_name,ingredient_text,recipe_text in recipes]
             line_bot_api.reply_message(event.reply_token, flex_messages)
         else:
             line_bot_api.reply_message(
