@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 import io
 import firebase_admin
 from firebase_admin import credentials, firestore
+import re
 
 # 載入環境變數
 load_dotenv()
@@ -300,8 +301,8 @@ def handle_message(event):
     user_id = event.source.user_id
     user_message = event.message.text
 
-    # 修改判斷邏輯，允許「道」或「道菜」
-    if "道" in user_message:
+    # 匹配數字或中文數字 + 「道」
+    if re.search(r"([一二三四五六七八九十0-9]+道)", user_message):
         ingredients = user_ingredients.get(user_id, None)
         if ingredients:
             # 生成料理名稱和食譜內容
