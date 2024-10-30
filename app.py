@@ -95,7 +95,7 @@ def get_user_favorites():
         return jsonify(favorites), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-        
+
 def generate_recipe_response(user_message, ingredients):
     prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請按照以下格式生成一個適合的食譜：\n\n食譜名稱: [食譜名稱]\n食材: [食材列表]\n步驟: [具體步驟]，字數限制在300字以內。"
     response = openai.ChatCompletion.create(
@@ -283,7 +283,7 @@ def translate_and_filter_ingredients(detected_labels):
 
 # 問使用者料理需求
 def ask_user_for_recipe_info():
-    return "您今天想做甚麼樣的料理？幾道菜？"
+    return "您今天想做甚麼樣的料理？幾人份？"
 
 # 處理使用者需求
 @handler.add(PostbackEvent)
@@ -320,47 +320,21 @@ def handle_postback(event):
             TextSendMessage(text="已加入我的最愛~")
         )
 
-# 生成多道料理的食譜
-def generate_multiple_recipes(dish_count, ingredients):
-    recipes_show = []
-    for _ in range(dish_count):
-        dish_name, recipe_text = generate_recipe_response("", ingredients)
-        recipes_show.append((dish_name, recipe_text))
-    return recipes
-
 # 處理文字訊息，並生成多頁式食譜回覆
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_id = event.source.user_id
     user_message = event.message.text
 
-    print(f"收到的用戶訊息: {user_message}")  # 調試訊息
-    if "道" in user_message:
-        # 試圖提取阿拉伯數字，若找不到則回傳預設值 1
-        match = re.search(r"\d+", user_message)
-        dish_count = int(match.group()) if match else 1
+    if "份" in user_message or "人" in user_message:
         ingredients = user_ingredients.get(user_id, None)
-
-        print(f"提取的數量: {dish_count}")  # 調試數量
-        print(f"使用的食材: {ingredients}")  # 調試食材
-
         if ingredients:
-            # 生成多道料理的食譜
-            recipes_show = generate_multiple_recipes(dish_count, ingredients)
-            
-            # 準備多頁式回覆
-            flex_messages = [create_flex_message(recipe_text, user_id, dish_name, ingredients) for dish_name, recipe_text in recipes_show]
-            
-            # 確認生成的訊息數量
-            print(f"生成的 Flex Messages 數量: {len(flex_messages)}")
-
-            # 確保訊息數量不超過 5
-            if len(flex_messages) > 5:
-                flex_messages = flex_messages[:5]
-            
-            line_bot_api.reply_message(event.reply_token, flex_messages)
+            # 生成料理名稱和食譜內容
+            dish_name, recipe_response = generate_recipe_response(user_message, ingredients)
+            # 使用生成的料理名稱而非硬編碼的值
+            flex_message = create_flex_message(recipe_response, user_id, dish_name, ingredients)
+            line_bot_api.reply_message(event.reply_token, flex_message)
         else:
-            print("無法取得食材資料，請先上傳圖片來辨識食材。")
             line_bot_api.reply_message(
                 event.reply_token,
                 TextSendMessage(text="請先上傳圖片來辨識食材。")
@@ -370,7 +344,6 @@ def handle_message(event):
             event.reply_token,
             TextSendMessage(text="請告訴我您想要做什麼料理及份數。")
         )
-
 
 # 顯示特定食譜的詳細內容 (供 "查看更多" 使用)
 @app.route('/api/favorites/<recipe_id>', methods=['GET'])
