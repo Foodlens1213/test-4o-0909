@@ -283,7 +283,7 @@ def translate_and_filter_ingredients(detected_labels):
 
 # 問使用者料理需求
 def ask_user_for_recipe_info():
-    return "您今天想做甚麼樣的料理？幾人份？"
+    return "您今天想做甚麼樣的料理？幾道菜？"
 
 # 處理使用者需求
 @handler.add(PostbackEvent)
@@ -320,20 +320,32 @@ def handle_postback(event):
             TextSendMessage(text="已加入我的最愛~")
         )
 
+# 生成多道料理的食譜
+def generate_multiple_recipes(dish_count, ingredients):
+    recipes = []
+    for _ in range(dish_count):
+        dish_name, recipe_content = generate_recipe_response("", ingredients)
+        recipes.append((dish_name, recipe_content))
+    return recipes
+
 # 處理文字訊息，並生成多頁式食譜回覆
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_id = event.source.user_id
     user_message = event.message.text
 
-    if "份" in user_message or "人" in user_message:
+    if "道" in user_message:
+        # 從使用者訊息提取數字，表示需要幾道菜
+        dish_count = int(re.search(r"\d+", user_message).group()) if re.search(r"\d+", user_message) else 1
         ingredients = user_ingredients.get(user_id, None)
+        
         if ingredients:
-            # 生成料理名稱和食譜內容
-            dish_name, recipe_response = generate_recipe_response(user_message, ingredients)
-            # 使用生成的料理名稱而非硬編碼的值
-            flex_message = create_flex_message(recipe_response, user_id, dish_name, ingredients)
-            line_bot_api.reply_message(event.reply_token, flex_message)
+            # 根據需要的數量生成多道料理
+            recipes = generate_multiple_recipes(dish_count, ingredients)
+            
+            # 準備多頁式回覆
+            flex_messages = [create_flex_message(recipe_content, user_id, dish_name, ingredients) for dish_name, recipe_content in recipes]
+            line_bot_api.reply_message(event.reply_token, flex_messages)
         else:
             line_bot_api.reply_message(
                 event.reply_token,
