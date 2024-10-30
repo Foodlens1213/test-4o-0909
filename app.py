@@ -283,7 +283,7 @@ def translate_and_filter_ingredients(detected_labels):
 
 # 問使用者料理需求
 def ask_user_for_recipe_info():
-    return "您今天想做甚麼樣的料理？幾人份？"
+    return "您今天想做甚麼樣的料理？幾道菜？"
 
 # 處理使用者需求
 @handler.add(PostbackEvent)
@@ -320,19 +320,35 @@ def handle_postback(event):
             TextSendMessage(text="已加入我的最愛~")
         )
 
-# 處理文字訊息，並生成多頁式食譜回覆
+def generate_multiple_recipes(user_message, ingredients, dish_count):
+    recipes = []  # 儲存每道菜的結果
+    for i in range(dish_count):
+        dish_name, recipe_text = generate_recipe_response(user_message, ingredients)
+        recipes.append((dish_name, recipe_text))
+    return recipes
+
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_id = event.source.user_id
     user_message = event.message.text
 
-    if "份" in user_message or "人" in user_message:
+    if "道菜" in user_message:
+        # 假設使用者輸入了 "5道菜"，解析數字部分
+        dish_count = int(re.search(r'\d+', user_message).group())
+        
         ingredients = user_ingredients.get(user_id, None)
         if ingredients:
-            # 生成料理名稱和食譜內容
-            dish_name, recipe_response = generate_recipe_response(user_message, ingredients)
-            # 使用生成的料理名稱而非硬編碼的值
-            flex_message = create_flex_message(recipe_response, user_id, dish_name, ingredients)
+            # 生成多道料理
+            recipes = generate_multiple_recipes(user_message, ingredients, dish_count)
+            
+            # 建立多頁訊息
+            bubbles = []
+            for dish_name, recipe_text in recipes:
+                bubbles.append(create_flex_message(recipe_text, user_id, dish_name, ingredients).contents["contents"][0])
+
+            # 將所有菜品加入到 carousel
+            carousel = {"type": "carousel", "contents": bubbles}
+            flex_message = FlexSendMessage(alt_text="您的食譜", contents=carousel)
             line_bot_api.reply_message(event.reply_token, flex_message)
         else:
             line_bot_api.reply_message(
@@ -342,7 +358,7 @@ def handle_message(event):
     else:
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text="請告訴我您想要做什麼料理及份數。")
+            TextSendMessage(text="請告訴我您想要做幾道菜及所需食材。")
         )
 
 # 顯示特定食譜的詳細內容 (供 "查看更多" 使用)
