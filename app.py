@@ -149,17 +149,14 @@ import re
 def clean_text(text):
     # 去除無效字符和表情符號
     return re.sub(r'[^\w\s,.!?]', '', text)
-# 建立多頁訊息，按鈕點擊後會變更顏色並回應
-def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients):
+def create_flex_message(recipe_text, user_id, dish_name, ingredients, recipe_number):
     recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text)
-
-    # 確保 ingredients 是一個列表，並將其轉換為字符串
     if isinstance(ingredients, list):
         ingredients_str = ','.join(ingredients)
     else:
         ingredients_str = str(ingredients)
 
-    # 修改 bubble 結構，將料理名稱和食譜內容正確地顯示
+    # 設置 bubble 結構，使用 recipe_number 區分
     bubble = {
         "type": "bubble",
         "body": {
@@ -168,14 +165,14 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingred
             "contents": [
                 {
                     "type": "text",
-                    "text": f"料理名稱：{dish_name}",  # 顯示料理名稱
+                    "text": f"料理名稱 {recipe_number}：{dish_name}",
                     "wrap": True,
                     "weight": "bold",
                     "size": "xl"
                 },
                 {
                     "type": "text",
-                    "text": f"食材：{ingredient_text}",# 顯示食材
+                    "text": f"食材：{ingredient_text}",
                     "wrap": True,
                     "margin": "md",
                     "size": "sm"
@@ -190,7 +187,7 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingred
                 },
                 {
                     "type": "text",
-                    "text": recipe_text[:1000] if recipe_text else "食譜內容缺失",  # 顯示食譜內容
+                    "text": recipe_text[:1000] if recipe_text else "食譜內容缺失",
                     "wrap": True,
                     "margin": "md",
                     "size": "sm"
@@ -232,12 +229,7 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingred
             }
         }
     }
-
-    carousel = {
-        "type": "carousel",
-        "contents": [bubble]
-    }
-    return FlexSendMessage(alt_text="您的食譜", contents=carousel)
+    return bubble
 
 
 
@@ -342,24 +334,25 @@ def generate_multiple_recipes(dish_count, ingredients):
         recipes.append((dish_name,ingredient_text,recipe_text))
     return recipes
 
-# 處理文字訊息，並生成多頁式食譜回覆
+# 更新 handle_message 函數
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_id = event.source.user_id
     user_message = event.message.text
 
     if "道" in user_message:
-        # 從使用者訊息提取數字，表示需要幾道菜
         dish_count = int(re.search(r"\d+", user_message).group()) if re.search(r"\d+", user_message) else 1
         ingredients = user_ingredients.get(user_id, None)
 
         if ingredients:
-            # 根據需要的數量生成多道料理
             recipes = generate_multiple_recipes(dish_count, ingredients)
-
-            # 準備多頁式回覆
-            flex_messages = [create_flex_message(recipe_text, user_id, dish_name, ingredient_text,ingredients) for dish_name,ingredient_text,recipe_text in recipes]
-            line_bot_api.reply_message(event.reply_token, flex_messages)
+            flex_bubbles = [create_flex_message(recipe_text, user_id, dish_name, ingredient_text, i + 1)
+                            for i, (dish_name, ingredient_text, recipe_text) in enumerate(recipes)]
+            carousel = {
+                "type": "carousel",
+                "contents": flex_bubbles
+            }
+            line_bot_api.reply_message(event.reply_token, FlexSendMessage(alt_text="您的多道食譜", contents=carousel))
         else:
             line_bot_api.reply_message(
                 event.reply_token,
@@ -370,7 +363,6 @@ def handle_message(event):
             event.reply_token,
             TextSendMessage(text="請告訴我您想要做什麼料理及份數。")
         )
-
 # 顯示特定食譜的詳細內容 (供 "查看更多" 使用)
 @app.route('/api/favorites/<recipe_id>', methods=['GET'])
 def get_recipe_detail(recipe_id):
