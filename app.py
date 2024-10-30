@@ -9,7 +9,6 @@ from dotenv import load_dotenv
 import io
 import firebase_admin
 from firebase_admin import credentials, firestore
-from flask_executor import Executor
 
 # 載入環境變數
 load_dotenv()
@@ -286,35 +285,6 @@ def translate_and_filter_ingredients(detected_labels):
 # 問使用者料理需求
 def ask_user_for_recipe_info():
     return "您今天想做甚麼樣的料理？幾道菜？"
-
-# 非同步生成食譜回覆
-def async_generate_recipe(event, user_id, ingredients):
-    # 這裡調用 ChatGPT 生成食譜
-    dish_name, recipe_response = generate_recipe_response("您的需求", ingredients)
-    # Flex Message
-    flex_message = create_flex_message(recipe_response, user_id, dish_name, ingredients)
-    # 推送訊息
-    line_bot_api.push_message(user_id, flex_message)
-
-@handler.add(MessageEvent, message=TextMessage)
-def handle_message(event):
-    user_id = event.source.user_id
-    user_message = event.message.text
-    
-    ingredients = user_ingredients.get(user_id, None)
-    if ingredients:
-        # 使用非同步任務
-        executor.submit(async_generate_recipe, event, user_id, ingredients)
-        # 回應使用者請求已接收
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text="我們正在準備您的食譜，稍後會推送給您。")
-        )
-    else:
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text="請先上傳圖片來辨識食材。")
-        )
 
 # 處理使用者需求
 @handler.add(PostbackEvent)
