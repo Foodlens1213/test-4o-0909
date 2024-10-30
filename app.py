@@ -9,7 +9,6 @@ from dotenv import load_dotenv
 import io
 import firebase_admin
 from firebase_admin import credentials, firestore
-import zhconv
 import re
 
 # 載入環境變數
@@ -297,18 +296,37 @@ def handle_postback(event):
             TextSendMessage(text="已加入我的最愛~")
         )
 
+# 定義中文數字的映射
+chinese_to_arabic = {
+    '一': 1, '二': 2, '三': 3, '四': 4, '五': 5,
+    '六': 6, '七': 7, '八': 8, '九': 9, '十': 10
+}
+
 def extract_dish_count(user_message):
-    # 使用正則表達式匹配數字或中文數字，並將其轉換成整數
+    # 匹配數字或中文數字 + 「道」
     match = re.search(r"([一二三四五六七八九十0-9]+)道", user_message)
     if match:
         count_text = match.group(1)
-        try:
-            # 將中文數字轉換為阿拉伯數字
-            count = zhconv.convert(count_text, 'zh-hant')  # 例如「三」變成「3」
-            return int(count) if count.isdigit() else 1  # 若未能解析，返回1作為默認值
-        except ValueError:
-            return 1  # 預設為1道
-    return 1  # 預設為1道
+
+        # 如果是阿拉伯數字，直接轉為整數
+        if count_text.isdigit():
+            return int(count_text)
+
+        # 如果是中文數字，從字典中查找對應數值
+        elif count_text in chinese_to_arabic:
+            return chinese_to_arabic[count_text]
+
+        # 支持「十」「二十」這種結構的中文數字
+        elif "十" in count_text:
+            parts = count_text.split("十")
+            if parts[0] == '':  # 「十」開頭（表示10）
+                return 10 + (chinese_to_arabic[parts[1]] if parts[1] in chinese_to_arabic else 0)
+            elif parts[1] == '':  # 以「十」結尾（表示10, 20, ...）
+                return chinese_to_arabic[parts[0]] * 10
+            else:  # 「二十三」之類的數字
+                return chinese_to_arabic[parts[0]] * 10 + (chinese_to_arabic[parts[1]] if parts[1] in chinese_to_arabic else 0)
+
+    return 1  # 若無法解析數量，預設返回1
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
