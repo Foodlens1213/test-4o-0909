@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 import io
 import firebase_admin
 from firebase_admin import credentials, firestore
+import zhconv
 import re
 
 # 載入環境變數
@@ -296,28 +297,42 @@ def handle_postback(event):
             TextSendMessage(text="已加入我的最愛~")
         )
 
+def extract_dish_count(user_message):
+    # 使用正則表達式匹配數字或中文數字，並將其轉換成整數
+    match = re.search(r"([一二三四五六七八九十0-9]+)道", user_message)
+    if match:
+        count_text = match.group(1)
+        try:
+            # 將中文數字轉換為阿拉伯數字
+            count = zhconv.convert(count_text, 'zh-hant')  # 例如「三」變成「3」
+            return int(count) if count.isdigit() else 1  # 若未能解析，返回1作為默認值
+        except ValueError:
+            return 1  # 預設為1道
+    return 1  # 預設為1道
+
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_id = event.source.user_id
     user_message = event.message.text
+    ingredients = user_ingredients.get(user_id, None)
 
-    # 匹配數字或中文數字 + 「道」
-    if re.search(r"([一二三四五六七八九十0-9]+道)", user_message):
-        ingredients = user_ingredients.get(user_id, None)
-        if ingredients:
-            # 生成料理名稱和食譜內容
+    # 確定使用者所要求的數量
+    dish_count = extract_dish_count(user_message)
+
+    if ingredients:
+        # 生成指定數量的食譜
+        flex_messages = []
+        for i in range(dish_count):
             dish_name, recipe_response = generate_recipe_response(user_message, ingredients)
             flex_message = create_flex_message(recipe_response, user_id, dish_name, ingredients)
-            line_bot_api.reply_message(event.reply_token, flex_message)
-        else:
-            line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(text="請先上傳圖片來辨識食材。")
-            )
+            flex_messages.append(flex_message)
+        
+        # 回覆多個 Flex Message，最多可一次發送 5 個
+        line_bot_api.reply_message(event.reply_token, flex_messages[:5])  # 假設限制5個
     else:
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text="請告訴我您想要做什麼料理及幾道菜。")
+            TextSendMessage(text="請先上傳圖片來辨識食材。")
         )
 
 @app.route("/callback", methods=["POST"])
