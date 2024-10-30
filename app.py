@@ -150,7 +150,7 @@ def clean_text(text):
     # 去除無效字符和表情符號
     return re.sub(r'[^\w\s,.!?]', '', text)
 # 建立多頁訊息，按鈕點擊後會變更顏色並回應
-def create_flex_message(recipe_text, user_id, dish_name, ingredients):
+def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients):
     recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text)
 
     # 確保 ingredients 是一個列表，並將其轉換為字符串
