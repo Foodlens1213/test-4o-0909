@@ -206,12 +206,14 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredients):
         }
     }
 
+    print(f"Flex message bubble: {bubble}")  # 移動至此處
+
     carousel = {
         "type": "carousel",
         "contents": [bubble]
     }
     return FlexSendMessage(alt_text="您的食譜", contents=carousel)
-print(f"Flex message bubble: {bubble}")
+
 
 @handler.add(MessageEvent, message=ImageMessage)
 def handle_image_message(event):
