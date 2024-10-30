@@ -369,7 +369,6 @@ def handle_message(event):
             event.reply_token,
             TextSendMessage(text="無法生成食譜，請稍後再試。")
         )
-print(f"user_message: {user_message}, dish_count: {dish_count}")
 
 @app.route("/callback", methods=["POST"])
 def callback():
