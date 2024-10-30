@@ -322,10 +322,10 @@ def handle_postback(event):
 
 # 生成多道料理的食譜
 def generate_multiple_recipes(dish_count, ingredients):
-    recipes = []
+    recipes_show = []
     for _ in range(dish_count):
         dish_name, recipe_text = generate_recipe_response("", ingredients)
-        recipes.append((dish_name, recipe_text))
+        recipes_show.append((dish_name, recipe_text))
     return recipes
 
 # 處理文字訊息，並生成多頁式食譜回覆
@@ -341,10 +341,10 @@ def handle_message(event):
         
         if ingredients:
             # 根據需要的數量生成多道料理
-            recipes = generate_multiple_recipes(dish_count, ingredients)
+            recipes_show = generate_multiple_recipes(dish_count, ingredients)
             
             # 準備多頁式回覆
-            flex_messages = [create_flex_message(recipe_text, user_id, dish_name, ingredients) for dish_name, recipe_text in recipes]
+            flex_messages = [create_flex_message(recipe_text, user_id, dish_name, ingredients) for dish_name, recipe_text in recipes_show]
             line_bot_api.reply_message(event.reply_token, flex_messages)
         else:
             line_bot_api.reply_message(
