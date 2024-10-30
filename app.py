@@ -320,34 +320,32 @@ def handle_postback(event):
             TextSendMessage(text="已加入我的最愛~")
         )
 
-def generate_multiple_recipes(user_message, ingredients, dish_count):
-    recipes = []  # 儲存每道菜的結果
-    for i in range(dish_count):
-        dish_name, recipe_text = generate_recipe_response(user_message, ingredients)
+# 生成多道料理的食譜
+def generate_multiple_recipes(dish_count, ingredients):
+    recipes = []
+    for _ in range(dish_count):
+        dish_name, recipe_text = generate_recipe_response("", ingredients)
         recipes.append((dish_name, recipe_text))
     return recipes
 
+# 處理文字訊息，並生成多頁式食譜回覆
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_id = event.source.user_id
     user_message = event.message.text
 
-    if "道菜" in user_message:
-        # 假設使用者輸入了 "5道菜"，解析數字部分
-        dish_count = int(re.search(r'\d+', user_message).group())
-        
+    if "道" in user_message:
+        # 從使用者訊息提取數字，表示需要幾道菜
+        dish_count = int(re.search(r"\d+", user_message).group()) if re.search(r"\d+", user_message) else 1
         ingredients = user_ingredients.get(user_id, None)
-        if ingredients:
-            # 生成多道料理
-            recipes = generate_multiple_recipes(user_message, ingredients, dish_count)
-            
-            # 建立純文字回覆內容
-            reply_text = ""
-            for dish_name, recipe_text in recipes:
-                reply_text += f"料理名稱：{dish_name}\n食譜內容：\n{recipe_text}\n\n"
 
-            # 回覆純文字訊息
-            line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text.strip()))
+        if ingredients:
+            # 根據需要的數量生成多道料理
+            recipes = generate_multiple_recipes(dish_count, ingredients)
+
+            # 準備多頁式回覆
+            flex_messages = [create_flex_message(recipe_text, user_id, dish_name, ingredients) for dish_name, recipe_text in recipes]
+            line_bot_api.reply_message(event.reply_token, flex_messages)
         else:
             line_bot_api.reply_message(
                 event.reply_token,
@@ -356,9 +354,8 @@ def handle_message(event):
     else:
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text="請告訴我您想要做幾道菜及所需食材。")
+            TextSendMessage(text="請告訴我您想要做什麼料理及份數。")
         )
-
 
 # 顯示特定食譜的詳細內容 (供 "查看更多" 使用)
 @app.route('/api/favorites/<recipe_id>', methods=['GET'])
