@@ -156,6 +156,9 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingred
     else:
         ingredients_str = str(ingredients)
 
+    # 如果提供了食材，則顯示；若無則顯示「未能識別食材」
+    ingredient_text_display = ingredient_text if ingredient_text != "未提供食材" else "未能識別食材"
+
     # 設置 bubble 結構，使用 recipe_number 區分
     bubble = {
         "type": "bubble",
@@ -172,7 +175,7 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingred
                 },
                 {
                     "type": "text",
-                    "text": f"食材：{ingredient_text}",
+                    "text": f"食材：{ingredient_text_display}",
                     "wrap": True,
                     "margin": "md",
                     "size": "sm"
@@ -230,6 +233,7 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingred
         }
     }
     return bubble
+
 
 
 
