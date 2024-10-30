@@ -124,8 +124,9 @@ def generate_recipe_response(user_message, ingredients):
     if not recipe_text:
         recipe_text = "未提供食譜內容"
 
+    print(f"Generated dish_name: {dish_name}, recipe_text: {recipe_text}")  # 移動至此處
     return dish_name, recipe_text
-print(f"Generated dish_name: {dish_name}, recipe_text: {recipe_text}")
+
 
 import re
 def clean_text(text):
