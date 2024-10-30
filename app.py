@@ -95,8 +95,7 @@ def get_user_favorites():
         return jsonify(favorites), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-        
-# 生成食譜回覆（純文字回覆）
+
 def generate_recipe_response(user_message, ingredients):
     prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請按照以下格式生成一個適合的食譜：\n\n食譜名稱: [食譜名稱]\n食材: [食材列表]\n步驟: [具體步驟]，字數限制在300字以內。"
     response = openai.ChatCompletion.create(
@@ -133,7 +132,9 @@ def generate_recipe_response(user_message, ingredients):
     if not recipe_text:
         recipe_text = "未提供食譜內容"
 
-    # 返回處理後的結果
+    print(f"解析出的料理名稱: {dish_name}")
+    print(f"解析出的食譜內容: {recipe_text}")
+
     return dish_name, recipe_text
 
 
@@ -141,7 +142,6 @@ import re
 def clean_text(text):
     # 去除無效字符和表情符號
     return re.sub(r'[^\w\s,.!?]', '', text)
-
 # 建立多頁訊息，按鈕點擊後會變更顏色並回應
 def create_flex_message(recipe_text, user_id, dish_name, ingredients):
     recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text)
@@ -152,7 +152,7 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredients):
     else:
         ingredients_str = str(ingredients)
 
-    #修改 bubble 結構，將料理名稱和食譜內容正確地顯示
+    # 修改 bubble 結構，將料理名稱和食譜內容正確地顯示
     bubble = {
         "type": "bubble",
         "body": {
