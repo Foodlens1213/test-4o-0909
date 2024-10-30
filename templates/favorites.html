@@ -211,7 +211,7 @@
                             <h3>${recipe.dish}</h3>
                             <p>${recipe.recipe.substring(0, 100)}...</p> <!-- 顯示前100字 -->
                             <div class="card-buttons">
-                                <button onclick="viewMore('${recipe.dish}', '${recipe.recipe.replace(/'/g, "\\'")}')">查看更多</button>
+                                <button onclick="viewMore('${encodeURIComponent(recipe.dish)}', '${encodeURIComponent(recipe.recipe)}')">查看更多</button>
                                 <button class="delete" onclick="deleteRecipe('${recipe.id}')">刪除</button>
                             </div>
                         </div>
@@ -230,8 +230,8 @@
 
         // 查看更多功能 - 顯示模態框
         function viewMore(dishName, recipeContent) {
-            document.getElementById("modalDishName").textContent = dishName;
-            document.getElementById("modalRecipeContent").textContent = recipeContent;
+            document.getElementById("modalDishName").textContent = decodeURIComponent(dishName);
+            document.getElementById("modalRecipeContent").textContent = decodeURIComponent(recipeContent);
             document.getElementById("recipeModal").style.display = "block";
         }
 
