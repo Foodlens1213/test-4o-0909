@@ -3,7 +3,7 @@ line-bot-sdk
 openai==0.28
 requests
 python-dotenv
-gunicorn app:app --timeout 90
+gunicorn
 google-cloud-vision
 mysql-connector-python
 google-api-python-client
