@@ -48,6 +48,55 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 # 儲存處理後的食材資料（供後續使用）
 user_ingredients = {}
 
+@handler.add(MessageEvent, message=ImageMessage)
+def handle_image_message(event):
+    message_id = event.message.id
+    print(f"收到圖片訊息，message_id: {message_id}")  # 調試信息
+    message_content = line_bot_api.get_message_content(message_id)
+
+    try:
+        # 讀取圖片內容
+        image_data = io.BytesIO(message_content.content)
+        image = vision.Image(content=image_data.read())
+        print("圖片已成功讀取")  # 調試信息
+
+        # 使用 Google Cloud Vision API 進行標籤偵測
+        response = vision_client.label_detection(image=image)
+        labels = response.label_annotations
+        print(f"Google Cloud Vision 標籤偵測結果: {[label.description for label in labels]}")  # 調試信息
+
+        if labels:
+            detected_labels = [label.description for label in labels]
+            processed_text = translate_and_filter_ingredients(detected_labels)
+            user_id = event.source.user_id
+
+            if processed_text:
+                user_ingredients[user_id] = processed_text
+                question_response = ask_user_for_recipe_info()
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text=question_response)
+                )
+                print(f"處理後的食材列表: {processed_text}")  # 調試信息
+            else:
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text="未能識別出任何食材，請嘗試上傳另一張清晰的圖片。")
+                )
+                print("未能識別出任何食材")  # 調試信息
+        else:
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="無法辨識出任何物體，請確保圖片中的食材明顯可見。")
+            )
+            print("無法辨識出任何物體")  # 調試信息
+    except Exception as e:
+        print(f"Google Vision API 錯誤: {str(e)}")
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=f"圖片辨識過程中發生錯誤: {str(e)}")
+        )
+
 # 儲存最愛食譜到 Firebase Firestore
 def save_recipe_to_db(user_id, dish_name, recipe_text):
     try:
