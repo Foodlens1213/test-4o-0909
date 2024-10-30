@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 import io
 import firebase_admin
 from firebase_admin import credentials, firestore
+import re
 
 # 載入環境變數
 load_dotenv()
@@ -137,8 +138,6 @@ def generate_recipe_response(user_message, ingredients):
 
     return dish_name, recipe_text
 
-
-import re
 def clean_text(text):
     # 去除無效字符和表情符號
     return re.sub(r'[^\w\s,.!?]', '', text)
