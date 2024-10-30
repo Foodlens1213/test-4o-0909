@@ -334,10 +334,9 @@ def extract_dish_count(user_message):
     return 1  # 若無法解析數量，預設返回1
 
 @handler.add(MessageEvent, message=TextMessage)
-@handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_id = event.source.user_id
-    user_message = event.message.text
+    user_message = event.message.text  # 定義 user_message
     ingredients = user_ingredients.get(user_id, None)
 
     # 檢查 ingredients 是否存在
@@ -350,6 +349,7 @@ def handle_message(event):
 
     # 確定使用者所要求的數量
     dish_count = extract_dish_count(user_message)
+    print(f"user_message: {user_message}, dish_count: {dish_count}")  # 此處 user_message 已定義
 
     # 生成指定數量的食譜
     flex_messages = []
@@ -368,6 +368,8 @@ def handle_message(event):
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text="無法生成食譜，請稍後再試。")
+        )
+
         )
 print(f"user_message: {user_message}, dish_count: {dish_count}")
 
