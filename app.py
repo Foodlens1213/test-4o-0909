@@ -320,13 +320,22 @@ def handle_postback(event):
             TextSendMessage(text="已加入我的最愛~")
         )
 
-# 生成多道料理的食譜
 def generate_multiple_recipes(dish_count, ingredients):
     recipes = []
     for _ in range(dish_count):
-        dish_name,ingredient_text,recipe_text = generate_recipe_response("", ingredients)
-        recipes.append((dish_name,ingredient_text,recipe_text))
+        dish_name, ingredient_text, recipe_text = generate_recipe_response("", ingredients)
+        
+        # 確保 dish_name, ingredient_text, 和 recipe_text 都有值
+        if not dish_name:
+            dish_name = "未命名料理"
+        if not ingredient_text:
+            ingredient_text = "未提供食材"
+        if not recipe_text:
+            recipe_text = "未提供食譜內容"
+        
+        recipes.append((dish_name, ingredient_text, recipe_text))
     return recipes
+
 
 # 更新 handle_message 函數
 @handler.add(MessageEvent, message=TextMessage)
