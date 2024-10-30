@@ -143,7 +143,7 @@ import re
 def clean_text(text):
     # 去除無效字符和表情符號
     return re.sub(r'[^\w\s,.!?]', '', text)
-"""
+
 # 建立多頁訊息，按鈕點擊後會變更顏色並回應
 def create_flex_message(recipe_text, user_id, dish_name, ingredients):
     recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text)
@@ -226,7 +226,7 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredients):
         "contents": [bubble]
     }
     return FlexSendMessage(alt_text="您的食譜", contents=carousel)
-"""
+
 
 
 # 處理圖片訊息，進行 Google Cloud Vision 的物體偵測（Label Detection）
