@@ -48,7 +48,7 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 user_ingredients = {}
 
 # 儲存最愛食譜到 Firebase Firestore
-def save_recipe_to_db(user_id, dish_name, recipe_text):
+def save_recipe_to_db(user_id, dish_name, recipe_text, ingredient_text):
     try:
         # 手動生成一個新的 DocumentReference，這樣可以提前獲取 ID
         doc_ref = db.collection('recipes').document()
