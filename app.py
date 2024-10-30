@@ -48,55 +48,6 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 # 儲存處理後的食材資料（供後續使用）
 user_ingredients = {}
 
-@handler.add(MessageEvent, message=ImageMessage)
-def handle_image_message(event):
-    message_id = event.message.id
-    print(f"收到圖片訊息，message_id: {message_id}")  # 調試信息
-    message_content = line_bot_api.get_message_content(message_id)
-
-    try:
-        # 讀取圖片內容
-        image_data = io.BytesIO(message_content.content)
-        image = vision.Image(content=image_data.read())
-        print("圖片已成功讀取")  # 調試信息
-
-        # 使用 Google Cloud Vision API 進行標籤偵測
-        response = vision_client.label_detection(image=image)
-        labels = response.label_annotations
-        print(f"Google Cloud Vision 標籤偵測結果: {[label.description for label in labels]}")  # 調試信息
-
-        if labels:
-            detected_labels = [label.description for label in labels]
-            processed_text = translate_and_filter_ingredients(detected_labels)
-            user_id = event.source.user_id
-
-            if processed_text:
-                user_ingredients[user_id] = processed_text
-                question_response = ask_user_for_recipe_info()
-                line_bot_api.reply_message(
-                    event.reply_token,
-                    TextSendMessage(text=question_response)
-                )
-                print(f"處理後的食材列表: {processed_text}")  # 調試信息
-            else:
-                line_bot_api.reply_message(
-                    event.reply_token,
-                    TextSendMessage(text="未能識別出任何食材，請嘗試上傳另一張清晰的圖片。")
-                )
-                print("未能識別出任何食材")  # 調試信息
-        else:
-            line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(text="無法辨識出任何物體，請確保圖片中的食材明顯可見。")
-            )
-            print("無法辨識出任何物體")  # 調試信息
-    except Exception as e:
-        print(f"Google Vision API 錯誤: {str(e)}")
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text=f"圖片辨識過程中發生錯誤: {str(e)}")
-        )
-
 # 儲存最愛食譜到 Firebase Firestore
 def save_recipe_to_db(user_id, dish_name, recipe_text):
     try:
@@ -173,11 +124,16 @@ def generate_recipe_response(user_message, ingredients):
     if not recipe_text:
         recipe_text = "未提供食譜內容"
 
-    print(f"Generated dish_name: {dish_name}, recipe_text: {recipe_text}")  # 調試信息
     return dish_name, recipe_text
+print(f"Generated dish_name: {dish_name}, recipe_text: {recipe_text}")
+
+import re
+def clean_text(text):
+    return re.sub(r'[^\w\s,.!?]', '', text)
 
 def create_flex_message(recipe_text, user_id, dish_name, ingredients):
     recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text)
+
     if isinstance(ingredients, list):
         ingredients_str = ','.join(ingredients)
     else:
@@ -254,6 +210,93 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredients):
         "contents": [bubble]
     }
     return FlexSendMessage(alt_text="您的食譜", contents=carousel)
+print(f"Flex message bubble: {bubble}")
+
+@handler.add(MessageEvent, message=ImageMessage)
+def handle_image_message(event):
+    message_id = event.message.id
+    message_content = line_bot_api.get_message_content(message_id)
+    image_data = io.BytesIO(message_content.content)
+    image = vision.Image(content=image_data.read())
+
+    try:
+        response = vision_client.label_detection(image=image)
+        labels = response.label_annotations
+
+        if labels:
+            detected_labels = [label.description for label in labels]
+            processed_text = translate_and_filter_ingredients(detected_labels)
+            user_id = event.source.user_id
+            if processed_text:
+                user_ingredients[user_id] = processed_text
+                question_response = ask_user_for_recipe_info()
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text=question_response)
+                )
+            else:
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text="未能識別出任何食材，請嘗試上傳另一張清晰的圖片。")
+                )
+        else:
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="無法辨識出任何物體，請確保圖片中的食材明顯可見。")
+            )
+    except Exception as e:
+        print(f"Google Vision API 錯誤: {str(e)}")
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=f"圖片辨識過程中發生錯誤: {str(e)}")
+        )
+
+def translate_and_filter_ingredients(detected_labels):
+    prompt = f"以下是從圖片中辨識出的物體列表：\n{', '.join(detected_labels)}\n請將其翻譯成繁體中文，並只保留與食材相關的詞彙，去除非食材的詞彙。"
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "你是一個專業的翻譯助手，並且能過濾出與食材相關的內容。"},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    processed_text = response.choices[0].message['content'].strip()
+    return processed_text
+
+def ask_user_for_recipe_info():
+    return "您今天想做甚麼樣的料理？幾道菜？"
+
+@handler.add(PostbackEvent)
+def handle_postback(event):
+    data = event.postback.data
+    params = dict(x.split('=') for x in data.split('&'))
+    action = params.get('action')
+    user_id = params.get('user_id')
+
+    if action == 'new_recipe':
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text="沒問題，請稍後~")
+        )
+        ingredients = params.get('ingredients')
+        new_recipe = generate_recipe_response("新的食譜", ingredients)
+        flex_message = create_flex_message(new_recipe, user_id, "新食譜", ingredients)
+        line_bot_api.push_message(user_id, flex_message)
+
+    elif action == 'new_image':
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text="請上傳一張新圖片來辨識食材。")
+        )
+
+    elif action == 'save_favorite':
+        recipe_id = params.get('recipe_id')
+        recipe = get_recipe_from_db(recipe_id)
+        save_recipe_to_db(user_id, recipe['dish'], recipe['recipe'])
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text="已加入我的最愛~")
+        )
 
 # 定義中文數字的映射
 chinese_to_arabic = {
@@ -262,29 +305,39 @@ chinese_to_arabic = {
 }
 
 def extract_dish_count(user_message):
+    # 匹配數字或中文數字 + 「道」
     match = re.search(r"([一二三四五六七八九十0-9]+)道", user_message)
     if match:
         count_text = match.group(1)
+
+        # 如果是阿拉伯數字，直接轉為整數
         if count_text.isdigit():
             return int(count_text)
+
+        # 如果是中文數字，從字典中查找對應數值
         elif count_text in chinese_to_arabic:
             return chinese_to_arabic[count_text]
+
+        # 支持「十」「二十」這種結構的中文數字
         elif "十" in count_text:
             parts = count_text.split("十")
-            if parts[0] == '':
+            if parts[0] == '':  # 「十」開頭（表示10）
                 return 10 + (chinese_to_arabic[parts[1]] if parts[1] in chinese_to_arabic else 0)
-            elif parts[1] == '':
+            elif parts[1] == '':  # 以「十」結尾（表示10, 20, ...）
                 return chinese_to_arabic[parts[0]] * 10
-            else:
+            else:  # 「二十三」之類的數字
                 return chinese_to_arabic[parts[0]] * 10 + (chinese_to_arabic[parts[1]] if parts[1] in chinese_to_arabic else 0)
-    return 1
 
+    return 1  # 若無法解析數量，預設返回1
+
+@handler.add(MessageEvent, message=TextMessage)
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_id = event.source.user_id
     user_message = event.message.text
     ingredients = user_ingredients.get(user_id, None)
 
+    # 檢查 ingredients 是否存在
     if not ingredients:
         line_bot_api.reply_message(
             event.reply_token,
@@ -292,25 +345,28 @@ def handle_message(event):
         )
         return
 
+    # 確定使用者所要求的數量
     dish_count = extract_dish_count(user_message)
-    print(f"user_message: {user_message}, dish_count: {dish_count}, ingredients: {ingredients}")  # 調試信息
 
+    # 生成指定數量的食譜
     flex_messages = []
     for i in range(dish_count):
         dish_name, recipe_response = generate_recipe_response(user_message, ingredients)
-        if dish_name and recipe_response:
+        if dish_name and recipe_response:  # 確保食譜生成成功
             flex_message = create_flex_message(recipe_response, user_id, dish_name, ingredients)
             flex_messages.append(flex_message)
         else:
             print("食譜生成失敗，請檢查 generate_recipe_response 函數的回傳結果")
 
+    # 如果有生成的 Flex Message，則回覆；若無，回覆提示信息
     if flex_messages:
-        line_bot_api.reply_message(event.reply_token, flex_messages[:5])
+        line_bot_api.reply_message(event.reply_token, flex_messages[:5])  # 假設限制5個
     else:
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text="無法生成食譜，請稍後再試。")
         )
+print(f"user_message: {user_message}, dish_count: {dish_count}")
 
 @app.route("/callback", methods=["POST"])
 def callback():
