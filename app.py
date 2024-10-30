@@ -331,15 +331,22 @@ def handle_message(event):
     user_id = event.source.user_id
     user_message = event.message.text
 
-    if "份" in user_message or "人" in user_message:
+    if "道菜" in user_message:
+        # 假設使用者輸入了 "5道菜"，解析數字部分
+        dish_count = int(re.search(r'\d+', user_message).group())
+        
         ingredients = user_ingredients.get(user_id, None)
         if ingredients:
-            # 生成料理名稱和食譜內容
-            dish_name, recipe_response = generate_recipe_response(user_message, ingredients)
+            # 生成多道料理
+            recipes = generate_multiple_recipes(user_message, ingredients, dish_count)
             
+            # 建立純文字回覆內容
+            reply_text = ""
+            for dish_name, recipe_text in recipes:
+                reply_text += f"料理名稱：{dish_name}\n食譜內容：\n{recipe_text}\n\n"
+
             # 回覆純文字訊息
-            reply_text = f"料理名稱：{dish_name}\n\n食譜內容：\n{recipe_response}"
-            line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text.strip()))
         else:
             line_bot_api.reply_message(
                 event.reply_token,
@@ -348,8 +355,9 @@ def handle_message(event):
     else:
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text="請告訴我您想要做什麼料理及份數。")
+            TextSendMessage(text="請告訴我您想要做幾道菜及所需食材。")
         )
+
 
 # 顯示特定食譜的詳細內容 (供 "查看更多" 使用)
 @app.route('/api/favorites/<recipe_id>', methods=['GET'])
