@@ -13,7 +13,6 @@ from firebase_admin import credentials, firestore
 # 載入環境變數
 load_dotenv()
 app = Flask(__name__)
-executor = Executor(app)
 
 # 初始化 Firebase Admin SDK 和 Firestore
 firebase_credentials_content = os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY")
