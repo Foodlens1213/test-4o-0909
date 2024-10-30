@@ -341,18 +341,27 @@ def handle_message(event):
     user_message = event.message.text
 
     if "道" in user_message:
+        # 從使用者訊息提取數字，表示需要幾道菜
         dish_count = int(re.search(r"\d+", user_message).group()) if re.search(r"\d+", user_message) else 1
         ingredients = user_ingredients.get(user_id, None)
 
         if ingredients:
+            # 根據需要的數量生成多道料理
             recipes = generate_multiple_recipes(dish_count, ingredients)
-            flex_bubbles = [create_flex_message(recipe_text, user_id, dish_name, ingredient_text, i + 1)
-                            for i, (dish_name, ingredient_text, recipe_text) in enumerate(recipes)]
+
+            # 準備多頁式回覆
+            flex_bubbles = [
+                create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, i + 1)
+                for i, (dish_name, ingredient_text, recipe_text) in enumerate(recipes)
+            ]
             carousel = {
                 "type": "carousel",
                 "contents": flex_bubbles
             }
-            line_bot_api.reply_message(event.reply_token, FlexSendMessage(alt_text="您的多道食譜", contents=carousel))
+            line_bot_api.reply_message(
+                event.reply_token, 
+                FlexSendMessage(alt_text="您的多道食譜", contents=carousel)
+            )
         else:
             line_bot_api.reply_message(
                 event.reply_token,
@@ -363,6 +372,8 @@ def handle_message(event):
             event.reply_token,
             TextSendMessage(text="請告訴我您想要做什麼料理及份數。")
         )
+
+        
 # 顯示特定食譜的詳細內容 (供 "查看更多" 使用)
 @app.route('/api/favorites/<recipe_id>', methods=['GET'])
 def get_recipe_detail(recipe_id):
