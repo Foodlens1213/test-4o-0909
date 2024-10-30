@@ -96,6 +96,7 @@ def get_user_favorites():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
         
+# 生成食譜回覆（純文字回覆）
 def generate_recipe_response(user_message, ingredients):
     prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請按照以下格式生成一個適合的食譜：\n\n食譜名稱: [食譜名稱]\n食材: [食材列表]\n步驟: [具體步驟]，字數限制在300字以內。"
     response = openai.ChatCompletion.create(
@@ -132,9 +133,7 @@ def generate_recipe_response(user_message, ingredients):
     if not recipe_text:
         recipe_text = "未提供食譜內容"
 
-    print(f"解析出的料理名稱: {dish_name}")
-    print(f"解析出的食譜內容: {recipe_text}")
-
+    # 返回處理後的結果
     return dish_name, recipe_text
 
 
@@ -152,7 +151,7 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredients):
     else:
         ingredients_str = str(ingredients)
 
-    # 修改 bubble 結構，將料理名稱和食譜內容正確地顯示
+    #修改 bubble 結構，將料理名稱和食譜內容正確地顯示
     bubble = {
         "type": "bubble",
         "body": {
@@ -332,24 +331,15 @@ def handle_message(event):
     user_id = event.source.user_id
     user_message = event.message.text
 
-    if "道菜" in user_message:
-        # 假設使用者輸入了 "5道菜"，解析數字部分
-        dish_count = int(re.search(r'\d+', user_message).group())
-        
+    if "份" in user_message or "人" in user_message:
         ingredients = user_ingredients.get(user_id, None)
         if ingredients:
-            # 生成多道料理
-            recipes = generate_multiple_recipes(user_message, ingredients, dish_count)
+            # 生成料理名稱和食譜內容
+            dish_name, recipe_response = generate_recipe_response(user_message, ingredients)
             
-            # 建立多頁訊息
-            bubbles = []
-            for dish_name, recipe_text in recipes:
-                bubbles.append(create_flex_message(recipe_text, user_id, dish_name, ingredients).contents["contents"][0])
-
-            # 將所有菜品加入到 carousel
-            carousel = {"type": "carousel", "contents": bubbles}
-            flex_message = FlexSendMessage(alt_text="您的食譜", contents=carousel)
-            line_bot_api.reply_message(event.reply_token, flex_message)
+            # 回覆純文字訊息
+            reply_text = f"料理名稱：{dish_name}\n\n食譜內容：\n{recipe_response}"
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
         else:
             line_bot_api.reply_message(
                 event.reply_token,
@@ -358,7 +348,7 @@ def handle_message(event):
     else:
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text="請告訴我您想要做幾道菜及所需食材。")
+            TextSendMessage(text="請告訴我您想要做什麼料理及份數。")
         )
 
 # 顯示特定食譜的詳細內容 (供 "查看更多" 使用)
