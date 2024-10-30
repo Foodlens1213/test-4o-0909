@@ -324,8 +324,8 @@ def handle_postback(event):
 def generate_multiple_recipes(dish_count, ingredients):
     recipes = []
     for _ in range(dish_count):
-        dish_name, recipe_content = generate_recipe_response("", ingredients)
-        recipes.append((dish_name, recipe_content))
+        dish_name, recipe_text = generate_recipe_response("", ingredients)
+        recipes.append((dish_name, recipe_text))
     return recipes
 
 # 處理文字訊息，並生成多頁式食譜回覆
@@ -344,7 +344,7 @@ def handle_message(event):
             recipes = generate_multiple_recipes(dish_count, ingredients)
             
             # 準備多頁式回覆
-            flex_messages = [create_flex_message(recipe_content, user_id, dish_name, ingredients) for dish_name, recipe_content in recipes]
+            flex_messages = [create_flex_message(recipe_text, user_id, dish_name, ingredients) for dish_name, recipe_text in recipes]
             line_bot_api.reply_message(event.reply_token, flex_messages)
         else:
             line_bot_api.reply_message(
