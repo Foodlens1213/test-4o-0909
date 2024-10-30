@@ -109,14 +109,11 @@ def generate_recipe_response(user_message, ingredients):
     )
     recipe = response.choices[0].message['content'].strip()
 
-    # 打印返回的完整內容，便於調試
-    print(f"ChatGPT 返回的內容: {recipe}")
-
     dish_name = None
     ingredient_text = None
     recipe_text = None
 
-    # 修改解析邏輯，支持新的標籤
+    # 分段解析 ChatGPT 回應的內容
     try:
         recipe_parts = recipe.split("\n\n")  # 分割段落
         for part in recipe_parts:
@@ -130,7 +127,7 @@ def generate_recipe_response(user_message, ingredients):
     except Exception as e:
         print(f"解析 ChatGPT 回應失敗: {e}")
 
-    # 如果沒有解析到，設置默認值
+    # 如果沒有解析到內容，設置默認值
     if not dish_name:
         dish_name = "未命名料理"
     if not ingredient_text:
@@ -138,11 +135,7 @@ def generate_recipe_response(user_message, ingredients):
     if not recipe_text:
         recipe_text = "未提供食譜內容"
 
-    print(f"解析出的料理名稱: {dish_name}")
-    print(f"解析出的食材: {ingredient_text}")
-    print(f"解析出的食譜內容: {recipe_text}")
-
-    return dish_name,ingredient_text,recipe_text
+    return dish_name, ingredient_text, recipe_text
 
 
 import re
@@ -156,10 +149,7 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingred
     else:
         ingredients_str = str(ingredients)
 
-    # 如果提供了食材，則顯示；若無則顯示「未能識別食材」
-    ingredient_text_display = ingredient_text if ingredient_text != "未提供食材" else "未能識別食材"
-
-    # 設置 bubble 結構，使用 recipe_number 區分
+    # 設置 Flex Message 結構
     bubble = {
         "type": "bubble",
         "body": {
@@ -175,7 +165,7 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingred
                 },
                 {
                     "type": "text",
-                    "text": f"食材：{ingredient_text_display}",
+                    "text": f"食材：{ingredient_text}",
                     "wrap": True,
                     "margin": "md",
                     "size": "sm"
