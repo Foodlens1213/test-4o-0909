@@ -334,19 +334,33 @@ def handle_message(event):
     user_id = event.source.user_id
     user_message = event.message.text
 
+    print(f"收到的用戶訊息: {user_message}")  # 調試訊息
     if "道" in user_message:
-        # 從使用者訊息提取數字，表示需要幾道菜
-        dish_count = int(re.search(r"\d+", user_message).group()) if re.search(r"\d+", user_message) else 1
+        # 試圖提取阿拉伯數字，若找不到則回傳預設值 1
+        match = re.search(r"\d+", user_message)
+        dish_count = int(match.group()) if match else 1
         ingredients = user_ingredients.get(user_id, None)
-        
+
+        print(f"提取的數量: {dish_count}")  # 調試數量
+        print(f"使用的食材: {ingredients}")  # 調試食材
+
         if ingredients:
-            # 根據需要的數量生成多道料理
+            # 生成多道料理的食譜
             recipes_show = generate_multiple_recipes(dish_count, ingredients)
             
             # 準備多頁式回覆
             flex_messages = [create_flex_message(recipe_text, user_id, dish_name, ingredients) for dish_name, recipe_text in recipes_show]
+            
+            # 確認生成的訊息數量
+            print(f"生成的 Flex Messages 數量: {len(flex_messages)}")
+
+            # 確保訊息數量不超過 5
+            if len(flex_messages) > 5:
+                flex_messages = flex_messages[:5]
+            
             line_bot_api.reply_message(event.reply_token, flex_messages)
         else:
+            print("無法取得食材資料，請先上傳圖片來辨識食材。")
             line_bot_api.reply_message(
                 event.reply_token,
                 TextSendMessage(text="請先上傳圖片來辨識食材。")
@@ -356,6 +370,7 @@ def handle_message(event):
             event.reply_token,
             TextSendMessage(text="請告訴我您想要做什麼料理及份數。")
         )
+
 
 # 顯示特定食譜的詳細內容 (供 "查看更多" 使用)
 @app.route('/api/favorites/<recipe_id>', methods=['GET'])
