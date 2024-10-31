@@ -242,6 +242,7 @@ def handle_image_message(event):
 
         if labels:
             detected_labels = [label.description for label in labels]
+            print(f"辨識到的食材: {detected_labels}")  # 在 log 中顯示食材
             processed_text = translate_and_filter_ingredients(detected_labels)
             user_id = event.source.user_id
             if processed_text:
