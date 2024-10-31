@@ -107,7 +107,7 @@ def generate_recipe_response(user_message, ingredients):
             {"role": "system", "content": "你是一位專業的廚師助理，會根據用戶的需求生成食譜。"},
             {"role": "user", "content": prompt}
         ],
-        max_tokens=500
+        max_tokens=800
     )
     recipe = response.choices[0].message['content'].strip()
     print(f"ChatGPT 返回的內容: {recipe}")  # 除錯：打印原始回應以進行檢查
