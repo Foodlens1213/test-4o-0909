@@ -227,7 +227,7 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingred
 
 import json
 # 載入詞庫
-with open('ingredients.json', 'r', encoding='utf-8') as f:
+with open('dic.json', 'r', encoding='utf-8') as f:
     ingredients_dict = json.load(f)
 
 # 判斷是否為食材
