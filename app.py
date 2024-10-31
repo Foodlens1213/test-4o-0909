@@ -225,18 +225,6 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingred
     }
     return bubble
 
-import json
-# 載入詞庫
-with open('dic.json', 'r', encoding='utf-8') as f:
-    ingredients_dict = json.load(f)
-
-# 判斷是否為食材
-def is_ingredient(word):
-    for category in ingredients_dict.values():
-        if word.lower() in category:
-            return True
-    return False
-
 # 處理圖片訊息，進行 Google Cloud Vision 的物體偵測（Label Detection）
 @handler.add(MessageEvent, message=ImageMessage)
 def handle_image_message(event):
