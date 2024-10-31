@@ -312,7 +312,7 @@ def handle_postback(event):
     elif action == 'save_favorite':
         recipe_id = params.get('recipe_id')
         recipe = get_recipe_from_db(recipe_id)
-        save_recipe_to_db(user_id, recipe['dish'], recipe['recipe'])
+        save_recipe_to_db(user_id, recipe['dish'], recipe['ingredient'], recipe['recipe'])
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text="已加入我的最愛~")
