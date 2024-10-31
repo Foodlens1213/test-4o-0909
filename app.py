@@ -430,12 +430,13 @@ def get_recipe_detail(recipe_id):
 @app.route('/api/favorites', methods=['DELETE'])
 def delete_favorite_recipe():
     recipe_id = request.args.get('recipe_id')
-    if not recipe_id:
-        return jsonify({'error': '缺少 recipe_id'}), 400
+    user_id = request.args.get('user_id')
+    if not recipe_id or not user_id:
+        return jsonify({'error': '缺少 recipe_id 或 user_id'}), 400
 
     try:
         # 從 favorites 集合中找到符合 user_id 和 recipe_id 的文件
-        favorites_ref = db.collection('favorites').where('recipe_id', '==', recipe_id)
+        favorites_ref = db.collection('favorites').where('user_id', '==', user_id).where('recipe_id', '==', recipe_id)
         favorites = favorites_ref.stream()
 
         # 檢查查詢結果並打印匹配數量
@@ -444,7 +445,7 @@ def delete_favorite_recipe():
             print("無法找到對應的收藏記錄")
             return jsonify({'error': '無法找到對應的收藏記錄'}), 404
         else:
-            print(f"找到 {len(favorites_list)} 個 favorites 文件與 recipe_id {recipe_id} 關聯")
+            print(f"找到 {len(favorites_list)} 個 favorites 文件與 recipe_id {recipe_id} 和 user_id {user_id} 關聯")
 
         # 刪除 favorites 集合中的文件
         batch = db.batch()
@@ -460,6 +461,7 @@ def delete_favorite_recipe():
     except Exception as e:
         print(f"刪除過程中發生錯誤: {str(e)}")
         return jsonify({'error': f'刪除過程中發生錯誤: {str(e)}'}), 500
+
 
 
 # Webhook callback 處理 LINE 訊息
