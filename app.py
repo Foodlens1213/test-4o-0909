@@ -343,10 +343,23 @@ def handle_postback(event):
     
 def generate_multiple_recipes(dish_count, ingredients):
     recipes = []
+    existing_dishes = set()  # 用於追踪生成的菜名，避免重複
+
     for _ in range(dish_count):
-        dish_name, ingredient_text, recipe_text = generate_recipe_response("", ingredients)
-        recipes.append((dish_name, ingredient_text, recipe_text))
+        while True:
+            # 生成食譜
+            dish_name, ingredient_text, recipe_text = generate_recipe_response("", ingredients)
+            
+            # 如果食譜不重複，則加入清單並跳出迴圈
+            if dish_name not in existing_dishes:
+                recipes.append((dish_name, ingredient_text, recipe_text))
+                existing_dishes.add(dish_name)
+                break
+            else:
+                print("生成的食譜重複，重新生成...")
+    
     return recipes
+
 
 # 將中文數字轉換為阿拉伯數字的函數
 def chinese_to_digit(user_message):
