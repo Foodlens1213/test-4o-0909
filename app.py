@@ -293,54 +293,54 @@ def handle_postback(event):
     action = params.get('action')
     user_id = params.get('user_id')
 
-# 修改 handle_postback 函數中的 `new_recipe` 行動回應
-if action == 'new_recipe':
-    # 回覆"沒問題，請稍後~"
-    line_bot_api.reply_message(
-        event.reply_token,
-        TextSendMessage(text="沒問題，請稍後~")
-    )
-    from linebot.models import FlexSendMessage
-    ingredients = params.get('ingredients')
-    dish_name, ingredient_text, recipe_text = generate_recipe_response("新的食譜", ingredients)
-    flex_message = FlexSendMessage(
-        alt_text="您的新食譜",
-        contents=create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, 1)
-    )
-    line_bot_api.push_message(user_id, flex_message)
-
-# 修改 handle_postback 中的 save_favorite 邏輯
-elif action == 'save_favorite':
-    recipe_id = params.get('recipe_id')
-    # 獲取已生成的食譜數據
-    recipe = get_recipe_from_db(recipe_id)
+    # 修改 handle_postback 函數中的 `new_recipe` 行動回應
+    if action == 'new_recipe':
+        # 回覆"沒問題，請稍後~"
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text="沒問題，請稍後~")
+        )
+        from linebot.models import FlexSendMessage
+        ingredients = params.get('ingredients')
+        dish_name, ingredient_text, recipe_text = generate_recipe_response("新的食譜", ingredients)
+        flex_message = FlexSendMessage(
+            alt_text="您的新食譜",
+            contents=create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, 1)
+        )
+        line_bot_api.push_message(user_id, flex_message)
     
-    if recipe:
-        # 確認是否成功獲取食譜數據
-        saved_id = save_recipe_to_db(user_id, recipe['dish'], recipe['recipe'], recipe['ingredient'])
-        if saved_id:
-            line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(text="已成功將食譜加入我的最愛!")
-            )
+    # 修改 handle_postback 中的 save_favorite 邏輯
+    elif action == 'save_favorite':
+        recipe_id = params.get('recipe_id')
+        # 獲取已生成的食譜數據
+        recipe = get_recipe_from_db(recipe_id)
+        
+        if recipe:
+            # 確認是否成功獲取食譜數據
+            saved_id = save_recipe_to_db(user_id, recipe['dish'], recipe['recipe'], recipe['ingredient'])
+            if saved_id:
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text="已成功將食譜加入我的最愛!")
+                )
+            else:
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text="抱歉，儲存過程中發生錯誤。")
+                )
         else:
             line_bot_api.reply_message(
                 event.reply_token,
-                TextSendMessage(text="抱歉，儲存過程中發生錯誤。")
-            )
-    else:
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text="找不到該食譜，無法加入我的最愛")
-            )
-
-
-def generate_multiple_recipes(dish_count, ingredients):
-    recipes = []
-    for _ in range(dish_count):
-        dish_name, ingredient_text, recipe_text = generate_recipe_response("", ingredients)
-        recipes.append((dish_name, ingredient_text, recipe_text))
-    return recipes
+                TextSendMessage(text="找不到該食譜，無法加入我的最愛")
+                )
+    
+    
+    def generate_multiple_recipes(dish_count, ingredients):
+        recipes = []
+        for _ in range(dish_count):
+            dish_name, ingredient_text, recipe_text = generate_recipe_response("", ingredients)
+            recipes.append((dish_name, ingredient_text, recipe_text))
+        return recipes
 
 
 # 更新 handle_message 函數
