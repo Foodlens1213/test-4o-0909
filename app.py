@@ -98,7 +98,7 @@ def get_user_favorites():
         return jsonify({'error': str(e)}), 500
 
 def generate_recipe_response(user_message, ingredients):
-    prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}，數量要求:如果需要超過1道，不要重複使用同樣的食譜。格式要求:每個食譜應包含下列格式：\n\n料理名稱: [料理名稱]\n食材: [食材列表，單行呈現]\n食譜內容: [分步驟列點，詳述步驟]"
+    prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}，格式要求:每個食譜應包含下列格式：\n\n料理名稱: [料理名稱]\n食材: [食材列表，單行呈現]\n食譜內容: [分步驟列點，詳述步驟]"
     
     # 從 ChatGPT 獲取回應
     response = openai.ChatCompletion.create(
