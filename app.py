@@ -10,6 +10,7 @@ import io
 import firebase_admin
 from firebase_admin import credentials, firestore
 
+
 # 載入環境變數
 load_dotenv()
 app = Flask(__name__)
@@ -224,8 +225,17 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingred
     }
     return bubble
 
+import json
+# 載入詞庫
+with open('ingredients.json', 'r', encoding='utf-8') as f:
+    ingredients_dict = json.load(f)
 
-
+# 判斷是否為食材
+def is_ingredient(word):
+    for category in ingredients_dict.values():
+        if word.lower() in category:
+            return True
+    return False
 
 # 處理圖片訊息，進行 Google Cloud Vision 的物體偵測（Label Detection）
 @handler.add(MessageEvent, message=ImageMessage)
@@ -237,16 +247,19 @@ def handle_image_message(event):
     image = vision.Image(content=image_data.read())
 
     try:
+        # 呼叫 Google Vision API
         response = vision_client.label_detection(image=image)
         labels = response.label_annotations
 
         if labels:
+            # 提取描述並過濾成食材
             detected_labels = [label.description for label in labels]
-            print(f"辨識到的食材: {detected_labels}")  # 在 log 中顯示食材
-            processed_text = translate_and_filter_ingredients(detected_labels)
+            filtered_ingredients = [label for label in detected_labels if is_ingredient(label)]
+            print(f"篩選後的食材: {filtered_ingredients}")
+
             user_id = event.source.user_id
-            if processed_text:
-                user_ingredients[user_id] = processed_text
+            if filtered_ingredients:
+                user_ingredients[user_id] = filtered_ingredients
                 question_response = ask_user_for_recipe_info()
                 line_bot_api.reply_message(
                     event.reply_token,
@@ -268,7 +281,6 @@ def handle_image_message(event):
             event.reply_token,
             TextSendMessage(text=f"圖片辨識過程中發生錯誤: {str(e)}")
         )
-
 
 # ChatGPT 翻譯並過濾非食材詞彙
 def translate_and_filter_ingredients(detected_labels):
