@@ -300,16 +300,14 @@ def handle_postback(event):
             event.reply_token,
             TextSendMessage(text="沒問題，請稍後~")
         )
-        # 生成新的食譜
+        from linebot.models import FlexSendMessage
         ingredients = params.get('ingredients')
         dish_name, ingredient_text, recipe_text = generate_recipe_response("新的食譜", ingredients)
-
-        # 創建新的 flex_message 使用 create_flex_message 函數
         flex_message = FlexSendMessage(
             alt_text="您的新食譜",
             contents=create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, 1)
         )
-        line_bot_api.reply_message(event.reply_token, flex_message)
+        line_bot_api.push_message(user_id, flex_message)
 
     elif action == 'save_favorite':
         recipe_id = params.get('recipe_id')
