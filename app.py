@@ -349,7 +349,7 @@ def generate_multiple_recipes(dish_count, ingredients):
 
 # 將中文數字轉換為阿拉伯數字的函數
 def chinese_to_digit(chinese_num):
-    chinese_digits = {'零': 0, '一': 1, '二': 2, '兩': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9}
+    chinese_digits = re.search(r"[零一二兩三四五六七八九]", user_message)
     if chinese_num in chinese_digits:
         return chinese_digits[chinese_num]
     return None
