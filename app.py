@@ -237,15 +237,13 @@ def handle_image_message(event):
     image = vision.Image(content=image_data.read())
 
     try:
-        # 将 label_detection 改为 object_localization
-        response = vision_client.object_localization(image=image)
-        objects = response.localized_object_annotations
+        response = vision_client.label_detection(image=image)
+        labels = response.label_annotations
 
-        if objects:
-            # 识别到的食材名称和位置信息
-            detected_objects = [obj.name for obj in objects]
-            print(f"辨識到的食材: {detected_objects}")  # 在 log 中显示食材
-            processed_text = translate_and_filter_ingredients(detected_objects)
+        if labels:
+            detected_labels = [label.description for label in labels]
+            print(f"辨識到的食材: {detected_labels}")  # 在 log 中顯示食材
+            processed_text = translate_and_filter_ingredients(detected_labels)
             user_id = event.source.user_id
             if processed_text:
                 user_ingredients[user_id] = processed_text
