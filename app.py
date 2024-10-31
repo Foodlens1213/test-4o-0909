@@ -426,41 +426,35 @@ def get_recipe_detail(recipe_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# API: 刪除收藏中的食譜
 @app.route('/api/favorites', methods=['DELETE'])
 def delete_favorite_recipe():
     recipe_id = request.args.get('recipe_id')
     user_id = request.args.get('user_id')
+    
     if not recipe_id or not user_id:
         return jsonify({'error': '缺少 recipe_id 或 user_id'}), 400
 
     try:
-        # 從 favorites 集合中找到符合 user_id 和 recipe_id 的文件
+        # 尋找符合 user_id 和 recipe_id 的收藏紀錄
         favorites_ref = db.collection('favorites').where('user_id', '==', user_id).where('recipe_id', '==', recipe_id)
         favorites = favorites_ref.stream()
 
-        # 檢查查詢結果並打印匹配數量
+        # 如果沒有找到符合的收藏記錄，回傳錯誤訊息
         favorites_list = list(favorites)
         if not favorites_list:
-            print("無法找到對應的收藏記錄")
             return jsonify({'error': '無法找到對應的收藏記錄'}), 404
-        else:
-            print(f"找到 {len(favorites_list)} 個 favorites 文件與 recipe_id {recipe_id} 和 user_id {user_id} 關聯")
 
-        # 刪除 favorites 集合中的文件
+        # 使用批次刪除操作
         batch = db.batch()
         for favorite in favorites_list:
-            print(f"準備刪除收藏文件 ID: {favorite.id}")
-            batch.delete(db.collection('favorites').document(favorite.id))
-        
-        # 提交批次刪除
+            batch.delete(favorite.reference)
         batch.commit()
-        print("批次刪除已提交")
 
         return jsonify({'message': '收藏中的食譜已成功刪除'}), 200
+
     except Exception as e:
-        print(f"刪除過程中發生錯誤: {str(e)}")
         return jsonify({'error': f'刪除過程中發生錯誤: {str(e)}'}), 500
+
 
 
 
