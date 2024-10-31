@@ -332,6 +332,7 @@ elif action == 'save_favorite':
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text="找不到該食譜，無法加入我的最愛")
+            )
 
 
 def generate_multiple_recipes(dish_count, ingredients):
