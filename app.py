@@ -426,33 +426,26 @@ def get_recipe_detail(recipe_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# API: 刪除最愛食譜
+# API: 刪除食譜
 @app.route('/api/favorites', methods=['DELETE'])
-def delete_favorite_recipe():
+def delete_recipe():
     recipe_id = request.args.get('recipe_id')
-    user_id = request.args.get('user_id')
-    
-    if not recipe_id or not user_id:
-        return jsonify({'error': 'Missing recipe_id or user_id'}), 400
+    if not recipe_id:
+        return jsonify({'error': '缺少 recipe_id'}), 400
 
     try:
-        # 查詢 favorites 集合，篩選符合 user_id 和 recipe_id 的食譜
-        favorites_ref = db.collection('favorites').where('user_id', '==', user_id).where('recipe_id', '==', recipe_id)
-        docs = favorites_ref.stream()
+        # 刪除所有與 recipe_id 關聯的 favorites
+        favorites_ref = db.collection('favorites').where('recipe_id', '==', recipe_id)
+        favorites = favorites_ref.stream()
+        for favorite in favorites:
+            db.collection('favorites').document(favorite.id).delete()
 
-        # 刪除找到的文檔
-        deleted = False
-        for doc in docs:
-            db.collection('favorites').document(doc.id).delete()
-            deleted = True
+        # 刪除 recipes 集合中的該食譜
+        db.collection('recipes').document(recipe_id).delete()
 
-        if deleted:
-            return jsonify({'message': 'Recipe removed from favorites successfully'}), 200
-        else:
-            return jsonify({'error': 'Recipe not found in favorites'}), 404
+        return jsonify({'message': '食譜和相關的最愛已成功刪除'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
 
 # Webhook callback 處理 LINE 訊息
 @app.route("/callback", methods=["POST"])
