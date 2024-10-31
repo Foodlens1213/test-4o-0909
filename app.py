@@ -294,23 +294,22 @@ def handle_postback(event):
     user_id = params.get('user_id')
 
 # 修改 handle_postback 函數中的 `new_recipe` 行動回應
-if action == 'new_recipe':
-    # 回覆"沒問題，請稍後~"
-    line_bot_api.reply_message(
-        event.reply_token,
-        TextSendMessage(text="沒問題，請稍後~")
-    )
-    # 生成新的食譜
-    ingredients = params.get('ingredients')
-    dish_name, ingredient_text, recipe_text = generate_recipe_response("新的食譜", ingredients)
+    if action == 'new_recipe':
+        # 回覆"沒問題，請稍後~"
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text="沒問題，請稍後~")
+        )
+        # 生成新的食譜
+        ingredients = params.get('ingredients')
+        dish_name, ingredient_text, recipe_text = generate_recipe_response("新的食譜", ingredients)
 
-    # 創建新的 flex_message 使用 create_flex_message 函數
-    flex_message = FlexSendMessage(
-        alt_text="您的新食譜",
-        contents=create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, 1)
-    )
-    line_bot_api.reply_message(event.reply_token, flex_message)
-
+        # 創建新的 flex_message 使用 create_flex_message 函數
+        flex_message = FlexSendMessage(
+            alt_text="您的新食譜",
+            contents=create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, 1)
+        )
+        line_bot_api.reply_message(event.reply_token, flex_message)
 
     elif action == 'save_favorite':
         recipe_id = params.get('recipe_id')
