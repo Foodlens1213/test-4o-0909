@@ -310,33 +310,34 @@ def handle_postback(event):
         line_bot_api.push_message(user_id, flex_message)
     
     elif action == 'save_favorite':
-        recipe_id = params.get('recipe_id')
-        recipe = get_recipe_from_db(recipe_id)
+    recipe_id = params.get('recipe_id')
+    user_id = user_id or event.source.user_id  # 確保 user_id 不為 null
+    recipe = get_recipe_from_db(recipe_id)
 
-        if recipe:
-            # 將該食譜儲存在 favorites 集合中
-            try:
-                db.collection('favorites').add({
-                    'user_id': user_id,
-                    'dish': recipe['dish'],
-                    'ingredient': recipe['ingredient'],
-                    'recipe': recipe['recipe'],
-                    'recipe_id': recipe_id  # 用於識別原始食譜
-                })
-                line_bot_api.reply_message(
-                    event.reply_token,
-                    TextSendMessage(text="已成功將食譜加入我的最愛!")
-                )
-            except Exception as e:
-                line_bot_api.reply_message(
-                    event.reply_token,
-                    TextSendMessage(text="抱歉，儲存過程中發生錯誤。")
-                )
-        else:
+    if recipe:
+        # 將該食譜儲存在 favorites 集合中
+        try:
+            db.collection('favorites').add({
+                'user_id': user_id,  # 確保此處使用了正確的 user_id
+                'dish': recipe['dish'],
+                'ingredient': recipe['ingredient'],
+                'recipe': recipe['recipe'],
+                'recipe_id': recipe_id  # 用於識別原始食譜
+            })
             line_bot_api.reply_message(
                 event.reply_token,
-                TextSendMessage(text="找不到該食譜，無法加入我的最愛")
+                TextSendMessage(text="已成功將食譜加入我的最愛!")
             )
+        except Exception as e:
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="抱歉，儲存過程中發生錯誤。")
+            )
+    else:
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text="找不到該食譜，無法加入我的最愛")
+        )
     
 def generate_multiple_recipes(dish_count, ingredients):
     recipes = []
