@@ -309,14 +309,31 @@ def handle_postback(event):
         )
         line_bot_api.push_message(user_id, flex_message)
 
+    # 修改 handle_postback 中的 save_favorite 邏輯
     elif action == 'save_favorite':
-        recipe_id = params.get('recipe_id')
-        recipe = get_recipe_from_db(recipe_id)
-        save_recipe_to_db(user_id, recipe['dish'], recipe['ingredient'], recipe['recipe'])
+    recipe_id = params.get('recipe_id')
+    # 獲取已生成的食譜數據
+    recipe = get_recipe_from_db(recipe_id)
+    
+        if recipe:
+        # 確認是否成功獲取食譜數據
+        saved_id = save_recipe_to_db(user_id, recipe['dish'], recipe['recipe'], recipe['ingredient'])
+            if saved_id:
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="已成功將食譜加入我的最愛!")
+            )
+            else:
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="抱歉，儲存過程中發生錯誤。")
+            )
+        else:
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text="已加入我的最愛~")
-        )
+            TextSendMessage(text="找不到該食譜，無法加入我的最愛。")
+            )
+
 
 def generate_multiple_recipes(dish_count, ingredients):
     recipes = []
