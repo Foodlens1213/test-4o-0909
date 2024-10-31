@@ -357,7 +357,17 @@ def handle_message(event):
 
     if "道" in user_message:
         # 從使用者訊息提取數字，表示需要幾道菜
-        dish_count = int(re.search(r"\d+", user_message).group()) if re.search(r"\d+", user_message) else 1
+        dish_count = None
+        # 優先檢查阿拉伯數字
+        if re.search(r"\d+", user_message):
+            dish_count = int(re.search(r"\d+", user_message).group())
+        # 若無阿拉伯數字，檢查漢字
+        else:
+            chinese_num = re.search(r"[零一二三四五六七八九]", user_message)
+            if chinese_num:
+                dish_count = chinese_to_digit(chinese_num.group())
+        # 預設為1道菜，如果數字解析成功，則使用提取到的數字
+        dish_count = dish_count if dish_count is not None else 1
         ingredients = user_ingredients.get(user_id, None)
 
         if ingredients:
