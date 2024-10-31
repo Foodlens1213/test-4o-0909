@@ -120,7 +120,7 @@ def generate_recipe_response(user_message, ingredients):
     # 使用更嚴格的正則表達式解析各部分
     dish_name_match = re.search(r"(?:食譜名稱|名稱)[:：]\s*(.+)", recipe)
     ingredient_text_match = re.search(r"(?:食材|材料)[:：]\s*(.+)", recipe)
-    recipe_text_match = re.search(r"(?:步驟|做法)[:：]\s*(.+)", recipe)
+    recipe_text_match = re.search(r"(?:步驟|做法)[:：]\s*((.|\n)+)", recipe)
 
     # 如果匹配成功，則賦值
     if dish_name_match:
@@ -180,7 +180,7 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingred
                 },
                 {
                     "type": "text",
-                    "text": recipe_text[:1000] if recipe_text else "食譜內容缺失",
+                    "text": recipe_text if recipe_text else "食譜內容缺失",
                     "wrap": True,
                     "margin": "md",
                     "size": "sm"
