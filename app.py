@@ -99,6 +99,8 @@ def get_user_favorites():
 
 def generate_recipe_response(user_message, ingredients):
     prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請按照以下格式生成一個適合的食譜：\n\n食譜名稱: [食譜名稱]\n食材: [食材列表]\n步驟: [具體步驟]，字數限制在300字以內。"
+    
+    # 從 ChatGPT 獲取回應
     response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=[
@@ -108,24 +110,29 @@ def generate_recipe_response(user_message, ingredients):
         max_tokens=500
     )
     recipe = response.choices[0].message['content'].strip()
+    print(f"ChatGPT 返回的內容: {recipe}")  # 除錯行，打印出原始回應
 
-    dish_name = None
-    ingredient_text = None
-    recipe_text = None
+    # 設定預設值，以防解析失敗
+    dish_name = "未命名料理"
+    ingredient_text = "未提供食材"
+    recipe_text = "未提供食譜內容"
 
-    # 分段解析 ChatGPT 回應的內容
-    try:
-        recipe_parts = recipe.split("\n\n")  # 分割段落
-        for part in recipe_parts:
-            if "食譜名稱:" in part:
-                dish_name = part.replace("食譜名稱:", "").strip()
-            elif "食材:" in part:
-                ingredient_text = part.replace("食材:", "").strip()
-            elif "步驟:" in part:
-                recipe_text = part.replace("步驟:", "").strip()
+    # 使用正則表達式解析各部分
+    dish_name_match = re.search(r"食譜名稱[:：](.*)", recipe)
+    ingredient_text_match = re.search(r"食材[:：](.*)", recipe)
+    recipe_text_match = re.search(r"步驟[:：](.*)", recipe)
 
-    except Exception as e:
-        print(f"解析 ChatGPT 回應失敗: {e}")
+    # 如果匹配成功，則賦值
+    if dish_name_match:
+        dish_name = dish_name_match.group(1).strip()
+    if ingredient_text_match:
+        ingredient_text = ingredient_text_match.group(1).strip()
+    if recipe_text_match:
+        recipe_text = recipe_text_match.group(1).strip()
+
+    print(f"解析出的料理名稱: {dish_name}")  # 除錯，顯示解析結果
+    print(f"解析出的食材: {ingredient_text}")
+    print(f"解析出的食譜內容: {recipe_text}")
 
     return dish_name, ingredient_text, recipe_text
 
