@@ -127,14 +127,6 @@ def generate_recipe_response(user_message, ingredients):
     except Exception as e:
         print(f"解析 ChatGPT 回應失敗: {e}")
 
-    # 如果沒有解析到內容，設置默認值
-    if not dish_name:
-        dish_name = "未命名料理"
-    if not ingredient_text:
-        ingredient_text = "未提供食材"
-    if not recipe_text:
-        recipe_text = "未提供食譜內容"
-
     return dish_name, ingredient_text, recipe_text
 
 
@@ -324,15 +316,6 @@ def generate_multiple_recipes(dish_count, ingredients):
     recipes = []
     for _ in range(dish_count):
         dish_name, ingredient_text, recipe_text = generate_recipe_response("", ingredients)
-        
-        # 確保 dish_name, ingredient_text, 和 recipe_text 都有值
-        if not dish_name:
-            dish_name = "未命名料理"
-        if not ingredient_text:
-            ingredient_text = "未提供食材"
-        if not recipe_text:
-            recipe_text = "未提供食譜內容"
-        
         recipes.append((dish_name, ingredient_text, recipe_text))
     return recipes
 
