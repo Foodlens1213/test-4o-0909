@@ -120,7 +120,7 @@ def generate_recipe_response(user_message, ingredients):
     # 使用更嚴格的正則表達式解析各部分
     dish_name_match = re.search(r"(?:食譜名稱|名稱)[:：]\s*(.+)", recipe)
     ingredient_text_match = re.search(r"(?:食材|材料)[:：]\s*(.+)", recipe)
-    recipe_text = re.search(r"(?:食譜內容|步驟)[:：]\s*((.|\n)+)", recipe)
+    recipe_text_match = re.search(r"(?:食譜內容|步驟)[:：]\s*((.|\n)+)", recipe)
 
     # 如果匹配成功，則賦值
     if dish_name_match:
