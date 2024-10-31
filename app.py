@@ -335,12 +335,12 @@ def handle_postback(event):
                 )
     
     
-    def generate_multiple_recipes(dish_count, ingredients):
-        recipes = []
-        for _ in range(dish_count):
-            dish_name, ingredient_text, recipe_text = generate_recipe_response("", ingredients)
-            recipes.append((dish_name, ingredient_text, recipe_text))
-        return recipes
+def generate_multiple_recipes(dish_count, ingredients):
+    recipes = []
+    for _ in range(dish_count):
+        dish_name, ingredient_text, recipe_text = generate_recipe_response("", ingredients)
+        recipes.append((dish_name, ingredient_text, recipe_text))
+    return recipes
 
 
 # 更新 handle_message 函數
