@@ -426,31 +426,22 @@ def get_recipe_detail(recipe_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# API: 刪除食譜
-# API: 刪除食譜
+# API: 刪除收藏中的食譜
 @app.route('/api/favorites', methods=['DELETE'])
-def delete_recipe():
+def delete_favorite_recipe():
     recipe_id = request.args.get('recipe_id')
     if not recipe_id:
         return jsonify({'error': '缺少 recipe_id'}), 400
 
     try:
-        # 從 recipes 集合中查找 recipe_id 對應的 user_id
-        recipe_doc = db.collection('recipes').document(recipe_id).get()
-        if not recipe_doc.exists:
-            print("找不到對應的食譜文件")
-            return jsonify({'error': '找不到對應的食譜'}), 404
-        user_id = recipe_doc.to_dict().get('user_id')
-        print(f"找到 recipe_id 為 {recipe_id} 的文件，對應的 user_id 為 {user_id}")
-
-        # 使用找到的 user_id 和 recipe_id 刪除 favorites 集合中的文件
-        favorites_ref = db.collection('favorites').where('user_id', '==', user_id).where('recipe_id', '==', recipe_id)
+        # 從 favorites 集合中找到符合 user_id 和 recipe_id 的文件
+        favorites_ref = db.collection('favorites').where('recipe_id', '==', recipe_id)
         favorites = favorites_ref.stream()
 
         # 檢查查詢結果並打印匹配數量
         favorites_list = list(favorites)
         if not favorites_list:
-            print("無法找到任何收藏記錄，請檢查 user_id 和 recipe_id 是否正確")
+            print("無法找到對應的收藏記錄")
             return jsonify({'error': '無法找到對應的收藏記錄'}), 404
         else:
             print(f"找到 {len(favorites_list)} 個 favorites 文件與 recipe_id {recipe_id} 關聯")
@@ -465,17 +456,10 @@ def delete_recipe():
         batch.commit()
         print("批次刪除已提交")
 
-        # 刪除 recipes 集合中的該食譜
-        db.collection('recipes').document(recipe_id).delete()
-        print(f"刪除 recipes 集合中的文件 ID: {recipe_id}")
-
-        return jsonify({'message': '食譜和相關的最愛已成功刪除'}), 200
+        return jsonify({'message': '收藏中的食譜已成功刪除'}), 200
     except Exception as e:
         print(f"刪除過程中發生錯誤: {str(e)}")
         return jsonify({'error': f'刪除過程中發生錯誤: {str(e)}'}), 500
-
-
-
 
 
 # Webhook callback 處理 LINE 訊息
