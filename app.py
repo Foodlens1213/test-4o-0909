@@ -348,10 +348,11 @@ def generate_multiple_recipes(dish_count, ingredients):
     return recipes
 
 # 將中文數字轉換為阿拉伯數字的函數
-def chinese_to_digit(chinese_num):
+def chinese_to_digit(user_message):
+    chinese_digits = {'零': 0, '一': 1, '二': 2, '兩': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9}
     chinese_digits = re.search(r"[零一二兩三四五六七八九]", user_message)
-    if chinese_num in chinese_digits:
-        return chinese_digits[chinese_num]
+    if chinese_num:
+        return chinese_digits[chinese_num.group()]
     return None
     
 # 更新 handle_message 函數
@@ -368,9 +369,7 @@ def handle_message(event):
             dish_count = int(re.search(r"\d+", user_message).group())
         # 若無阿拉伯數字，檢查漢字
         else:
-            chinese_num = re.search(r"[零一二兩三四五六七八九]", user_message)
-            if chinese_num:
-                dish_count = chinese_to_digit(chinese_num.group())
+            dish_count = chinese_to_digit(user_message)  # 傳入 user_message
         # 預設為1道菜，如果數字解析成功，則使用提取到的數字
         dish_count = dish_count if dish_count is not None else 1
         ingredients = user_ingredients.get(user_id, None)
