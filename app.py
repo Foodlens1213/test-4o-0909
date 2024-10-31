@@ -98,7 +98,7 @@ def get_user_favorites():
         return jsonify({'error': str(e)}), 500
 
 def generate_recipe_response(user_message, ingredients):
-    prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請按照以下格式生成一個適合的食譜：\n\n食譜名稱: [食譜名稱]\n食材: [食材列表]\n步驟: [具體步驟]，字數限制在300字以內。"
+    prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請按照以下格式生成一個適合的食譜：\n\n料理名稱: [料理名稱]\n食材: [食材列表，單行呈現]\n食譜內容: [分步驟列點，詳述步驟]"
     
     # 從 ChatGPT 獲取回應
     response = openai.ChatCompletion.create(
@@ -120,7 +120,7 @@ def generate_recipe_response(user_message, ingredients):
     # 使用更嚴格的正則表達式解析各部分
     dish_name_match = re.search(r"(?:食譜名稱|名稱)[:：]\s*(.+)", recipe)
     ingredient_text_match = re.search(r"(?:食材|材料)[:：]\s*(.+)", recipe)
-    recipe_text_match = re.search(r"(?:步驟|做法)[:：]\s*((.|\n)+)", recipe)
+    recipe_text = re.search(r"(?:食譜內容|步驟)[:：]\s*((.|\n)+)", recipe)
 
     # 如果匹配成功，則賦值
     if dish_name_match:
@@ -172,7 +172,7 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingred
                 },
                 {
                     "type": "text",
-                    "text": "您的食譜：",
+                    "text": "食譜內容：",
                     "wrap": True,
                     "weight": "bold",
                     "size": "lg",
