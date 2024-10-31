@@ -174,17 +174,17 @@
     <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
     <script>
         let allRecipes = []; // 用於儲存所有食譜的全域變量
-
         async function main() {
             await liff.init({ liffId: "2006463836-0VmgLQA8" }); // 使用您的 LIFF ID 初始化
             if (liff.isLoggedIn()) {
                 const profile = await liff.getProfile();
                 const userId = profile.userId;
-
+        
                 // 顯示使用者名稱
                 document.getElementById("userName").textContent = `歡迎, ${profile.displayName}`;
-
-                fetch(`/api/favorites?user_id=${userId}`)
+        
+                // 確保 userId 已編碼，發送請求獲取收藏的食譜
+                fetch(`/api/favorites?user_id=${encodeURIComponent(userId)}`)
                     .then(response => response.json())
                     .then(data => {
                         allRecipes = data; // 儲存所有食譜以便搜尋使用
@@ -195,6 +195,8 @@
                 liff.login(); // 如果未登入則進行登入
             }
         }
+
+        
 
         // 顯示食譜的函數
         function displayRecipes(recipes) {
