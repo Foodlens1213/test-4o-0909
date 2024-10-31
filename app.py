@@ -104,7 +104,7 @@ def generate_recipe_response(user_message, ingredients):
     response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=[
-            {"role": "system", "content": "你是一位專業的廚師助理，會根據用戶的需求生成食譜。"},
+            {"role": "system", "content":f"你是一位專業的{user_message}廚師，會根據用戶的需求生成食譜。"},
             {"role": "user", "content": prompt}
         ],
         max_tokens=800
