@@ -46,7 +46,7 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # 儲存處理後的食材資料（供後續使用）
 user_ingredients = {}
-
+print(f"辨識出的食材:{user_ingredients}")
 # 儲存最愛食譜到 Firebase Firestore
 def save_recipe_to_db(user_id, dish_name, recipe_text, ingredient_text):
     try:
