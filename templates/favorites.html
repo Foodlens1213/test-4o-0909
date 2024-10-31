@@ -231,12 +231,14 @@
         }
 
         // 查看更多功能 - 顯示模態框
-        function viewMore(dishName, recipeContent) {
+        function viewMore(dishName, ingredient, recipeContent) {
             document.getElementById("modalDishName").textContent = decodeURIComponent(dishName);
-            document.getElementById("modalRecipeContent").textContent = decodeURIComponent(recipeContent);
+            document.getElementById("modalRecipeContent").innerHTML = `
+                <p><strong>食材:</strong> ${decodeURIComponent(ingredient)}</p>
+                <p><strong>食譜:</strong> ${decodeURIComponent(recipeContent)}</p>
+            `;
             document.getElementById("recipeModal").style.display = "block";
         }
-
         // 關閉模態框
         function closeModal() {
             document.getElementById("recipeModal").style.display = "none";
