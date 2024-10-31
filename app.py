@@ -89,9 +89,9 @@ def get_user_favorites():
         return jsonify({'error': 'Missing user_id'}), 400
 
     try:
-        recipes_ref = db.collection('recipes').where('user_id', '==', user_id)
-        docs = recipes_ref.stream()
-        # 將 Firestore 文檔的 id 作為 `id` 屬性返回
+        # 查詢 favorites 集合，篩選符合 user_id 的食譜
+        favorites_ref = db.collection('favorites').where('user_id', '==', user_id)
+        docs = favorites_ref.stream()
         favorites = [{'id': doc.id, **doc.to_dict()} for doc in docs]
         return jsonify(favorites), 200
     except Exception as e:
@@ -309,21 +309,25 @@ def handle_postback(event):
         )
         line_bot_api.push_message(user_id, flex_message)
     
-    # 修改 handle_postback 中的 save_favorite 邏輯
     elif action == 'save_favorite':
         recipe_id = params.get('recipe_id')
-        # 獲取已生成的食譜數據
         recipe = get_recipe_from_db(recipe_id)
-        
+
         if recipe:
-            # 確認是否成功獲取食譜數據
-            saved_id = save_recipe_to_db(user_id, recipe['dish'], recipe['ingredient'], recipe['recipe'])
-            if saved_id:
+            # 將該食譜儲存在 favorites 集合中
+            try:
+                db.collection('favorites').add({
+                    'user_id': user_id,
+                    'dish': recipe['dish'],
+                    'ingredient': recipe['ingredient'],
+                    'recipe': recipe['recipe'],
+                    'recipe_id': recipe_id  # 用於識別原始食譜
+                })
                 line_bot_api.reply_message(
                     event.reply_token,
                     TextSendMessage(text="已成功將食譜加入我的最愛!")
                 )
-            else:
+            except Exception as e:
                 line_bot_api.reply_message(
                     event.reply_token,
                     TextSendMessage(text="抱歉，儲存過程中發生錯誤。")
@@ -332,8 +336,7 @@ def handle_postback(event):
             line_bot_api.reply_message(
                 event.reply_token,
                 TextSendMessage(text="找不到該食譜，無法加入我的最愛")
-                )
-    
+            )
     
 def generate_multiple_recipes(dish_count, ingredients):
     recipes = []
