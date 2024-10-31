@@ -342,7 +342,13 @@ def generate_multiple_recipes(dish_count, ingredients):
         recipes.append((dish_name, ingredient_text, recipe_text))
     return recipes
 
-
+# 將中文數字轉換為阿拉伯數字的函數
+def chinese_to_digit(chinese_num):
+    chinese_digits = {'零': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9}
+    if chinese_num in chinese_digits:
+        return chinese_digits[chinese_num]
+    return None
+    
 # 更新 handle_message 函數
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
