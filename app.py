@@ -302,14 +302,11 @@ def handle_postback(event):
         # 生成新的食譜
         ingredients = params.get('ingredients')
         new_recipe = generate_recipe_response("新的食譜", ingredients)
-        flex_message = create_flex_message(new_recipe, user_id, "新食譜", ingredients)
-        line_bot_api.push_message(user_id, flex_message)
-
-    elif action == 'new_image':
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text="請上傳一張新圖片來辨識食材。")
+        flex_message = FlexSendMessage(
+            alt_text="這是您要求的食譜！",
+            contents=bubble  # 假設 `bubble` 是消息主體的 JSON 結構
         )
+        line_bot_api.reply_message(event.reply_token, flex_message)
 
     elif action == 'save_favorite':
         recipe_id = params.get('recipe_id')
