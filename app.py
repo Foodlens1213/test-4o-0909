@@ -294,7 +294,7 @@ def handle_postback(event):
     user_id = params.get('user_id')
 
 # 修改 handle_postback 函數中的 `new_recipe` 行動回應
-    if action == 'new_recipe':
+if action == 'new_recipe':
     # 回覆"沒問題，請稍後~"
     line_bot_api.reply_message(
         event.reply_token,
@@ -331,8 +331,7 @@ elif action == 'save_favorite':
     else:
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text="找不到該食譜，無法加入我的最愛。")
-        )
+            TextSendMessage(text="找不到該食譜，無法加入我的最
 
 
 def generate_multiple_recipes(dish_count, ingredients):
