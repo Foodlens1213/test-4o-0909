@@ -368,7 +368,7 @@ def handle_message(event):
             dish_count = int(re.search(r"\d+", user_message).group())
         # 若無阿拉伯數字，檢查漢字
         else:
-            chinese_num = re.search(r"[零一二三四五六七八九]", user_message)
+            chinese_num = re.search(r"[零一二兩三四五六七八九]", user_message)
             if chinese_num:
                 dish_count = chinese_to_digit(chinese_num.group())
         # 預設為1道菜，如果數字解析成功，則使用提取到的數字
