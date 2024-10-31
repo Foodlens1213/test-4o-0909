@@ -237,13 +237,15 @@ def handle_image_message(event):
     image = vision.Image(content=image_data.read())
 
     try:
-        response = vision_client.label_detection(image=image)
-        labels = response.label_annotations
+        # 将 label_detection 改为 object_localization
+        response = vision_client.object_localization(image=image)
+        objects = response.localized_object_annotations
 
-        if labels:
-            detected_labels = [label.description for label in labels]
-            print(f"辨識到的食材: {detected_labels}")  # 在 log 中顯示食材
-            processed_text = translate_and_filter_ingredients(detected_labels)
+        if objects:
+            # 识别到的食材名称和位置信息
+            detected_objects = [obj.name for obj in objects]
+            print(f"辨識到的食材: {detected_objects}")  # 在 log 中显示食材
+            processed_text = translate_and_filter_ingredients(detected_objects)
             user_id = event.source.user_id
             if processed_text:
                 user_ingredients[user_id] = processed_text
@@ -268,6 +270,7 @@ def handle_image_message(event):
             event.reply_token,
             TextSendMessage(text=f"圖片辨識過程中發生錯誤: {str(e)}")
         )
+
 
 # ChatGPT 翻譯並過濾非食材詞彙
 def translate_and_filter_ingredients(detected_labels):
