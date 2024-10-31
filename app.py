@@ -302,9 +302,7 @@ def handle_postback(event):
         # 生成新的食譜
         ingredients = params.get('ingredients')
         new_recipe = generate_recipe_response("新的食譜", ingredients)
-        flex_message = FlexSendMessage(
-            contents=bubble  # 假設 `bubble` 是消息主體的 JSON 結構
-        )
+        flex_message = bubble
         line_bot_api.reply_message(event.reply_token, flex_message)
 
     elif action == 'save_favorite':
