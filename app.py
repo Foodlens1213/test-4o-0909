@@ -235,19 +235,16 @@ def handle_image_message(event):
     image = vision.Image(content=image_data.read())
 
     try:
-        # 呼叫 Google Vision API
         response = vision_client.label_detection(image=image)
         labels = response.label_annotations
 
         if labels:
-            # 提取描述並過濾成食材
             detected_labels = [label.description for label in labels]
-            filtered_ingredients = [label for label in detected_labels if is_ingredient(label)]
-            print(f"篩選後的食材: {filtered_ingredients}")
-
+            print(f"辨識到的食材: {detected_labels}")  # 在 log 中顯示食材
+            processed_text = translate_and_filter_ingredients(detected_labels)
             user_id = event.source.user_id
-            if filtered_ingredients:
-                user_ingredients[user_id] = filtered_ingredients
+            if processed_text:
+                user_ingredients[user_id] = processed_text
                 question_response = ask_user_for_recipe_info()
                 line_bot_api.reply_message(
                     event.reply_token,
