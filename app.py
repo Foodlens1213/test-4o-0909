@@ -427,6 +427,7 @@ def get_recipe_detail(recipe_id):
         return jsonify({'error': str(e)}), 500
 
 # API: 刪除食譜
+# API: 刪除食譜
 @app.route('/api/favorites', methods=['DELETE'])
 def delete_recipe():
     recipe_id = request.args.get('recipe_id')
@@ -442,17 +443,17 @@ def delete_recipe():
         user_id = recipe_doc.to_dict().get('user_id')
         print(f"找到 recipe_id 為 {recipe_id} 的文件，對應的 user_id 為 {user_id}")
 
-        # 使用找到的 user_id 刪除 favorites 集合中的文件
-        favorites_ref = db.collection('favorites').where('user_id', '==', user_id)
+        # 使用找到的 user_id 和 recipe_id 刪除 favorites 集合中的文件
+        favorites_ref = db.collection('favorites').where('user_id', '==', user_id).where('recipe_id', '==', recipe_id)
         favorites = favorites_ref.stream()
 
         # 檢查查詢結果並打印匹配數量
         favorites_list = list(favorites)
         if not favorites_list:
-            print("無法找到任何收藏記錄，請檢查 user_id 是否正確")
+            print("無法找到任何收藏記錄，請檢查 user_id 和 recipe_id 是否正確")
             return jsonify({'error': '無法找到對應的收藏記錄'}), 404
         else:
-            print(f"找到 {len(favorites_list)} 個 favorites 文件與 user_id {user_id} 關聯")
+            print(f"找到 {len(favorites_list)} 個 favorites 文件與 recipe_id {recipe_id} 關聯")
 
         # 刪除 favorites 集合中的文件
         batch = db.batch()
