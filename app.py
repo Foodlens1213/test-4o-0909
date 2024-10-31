@@ -317,7 +317,7 @@ def handle_postback(event):
         
         if recipe:
             # 確認是否成功獲取食譜數據
-            saved_id = save_recipe_to_db(user_id, recipe['dish'], recipe['recipe'], recipe['ingredient'])
+            saved_id = save_recipe_to_db(user_id, recipe['dish'], recipe['ingredient'], recipe['recipe'])
             if saved_id:
                 line_bot_api.reply_message(
                     event.reply_token,
