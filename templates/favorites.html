@@ -213,7 +213,7 @@
                             <p>食材:${recipe.ingredient}</p>
                             <p>${recipe.recipe.substring(0, 100)}...</p> <!-- 顯示前100字 -->
                             <div class="card-buttons">
-                                <button onclick="viewMore('${encodeURIComponent(recipe.dish)}', '${encodeURIComponent(recipe.recipe)}')">查看更多</button>
+                                <button onclick="viewMore('${encodeURIComponent(recipe.dish)}', '${encodeURIComponent(recipe.ingredient)}', '${encodeURIComponent(recipe.recipe)}')">查看更多</button>
                                 <button class="delete" onclick="deleteRecipe('${recipe.id}')">刪除</button>
                             </div>
                         </div>
