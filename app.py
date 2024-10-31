@@ -10,7 +10,6 @@ import io
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-
 # 載入環境變數
 load_dotenv()
 app = Flask(__name__)
@@ -99,7 +98,7 @@ def get_user_favorites():
         return jsonify({'error': str(e)}), 500
 
 def generate_recipe_response(user_message, ingredients):
-    prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請按照以下格式生成一個適合的食譜：\n\n料理名稱: [料理名稱]\n食材: [食材列表，單行呈現]\n食譜內容: [分步驟列點，詳述步驟]"
+    prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}，如果用戶需要的數量是兩道以上，不要給我同樣料理的食譜。請按照以下格式生成一個適合的食譜：\n\n料理名稱: [料理名稱]\n食材: [食材列表，單行呈現]\n食譜內容: [分步驟列點，詳述步驟]"
     
     # 從 ChatGPT 獲取回應
     response = openai.ChatCompletion.create(
@@ -225,6 +224,9 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingred
     }
     return bubble
 
+
+
+
 # 處理圖片訊息，進行 Google Cloud Vision 的物體偵測（Label Detection）
 @handler.add(MessageEvent, message=ImageMessage)
 def handle_image_message(event):
@@ -340,23 +342,10 @@ def handle_postback(event):
     
 def generate_multiple_recipes(dish_count, ingredients):
     recipes = []
-    existing_dishes = set()  # 用於追踪生成的菜名，避免重複
-
     for _ in range(dish_count):
-        while True:
-            # 生成食譜
-            dish_name, ingredient_text, recipe_text = generate_recipe_response("", ingredients)
-            
-            # 如果食譜不重複，則加入清單並跳出迴圈
-            if dish_name not in existing_dishes:
-                recipes.append((dish_name, ingredient_text, recipe_text))
-                existing_dishes.add(dish_name)
-                break
-            else:
-                print("生成的食譜重複，重新生成...")
-    
+        dish_name, ingredient_text, recipe_text = generate_recipe_response("", ingredients)
+        recipes.append((dish_name, ingredient_text, recipe_text))
     return recipes
-
 
 # 將中文數字轉換為阿拉伯數字的函數
 def chinese_to_digit(user_message):
@@ -431,19 +420,11 @@ def get_recipe_detail(recipe_id):
 def delete_recipe():
     recipe_id = request.args.get('recipe_id')
     if not recipe_id:
-        return jsonify({'error': '缺少 recipe_id'}), 400
+        return jsonify({'error': 'Missing recipe_id'}), 400
 
     try:
-        # 刪除所有與 recipe_id 關聯的 favorites
-        favorites_ref = db.collection('favorites').where('recipe_id', '==', recipe_id)
-        favorites = favorites_ref.stream()
-        for favorite in favorites:
-            db.collection('favorites').document(favorite.id).delete()
-
-        # 刪除 recipes 集合中的該食譜
         db.collection('recipes').document(recipe_id).delete()
-
-        return jsonify({'message': '食譜和相關的最愛已成功刪除'}), 200
+        return jsonify({'message': 'Recipe deleted successfully'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
