@@ -110,17 +110,17 @@ def generate_recipe_response(user_message, ingredients):
         max_tokens=500
     )
     recipe = response.choices[0].message['content'].strip()
-    print(f"ChatGPT 返回的內容: {recipe}")  # 除錯行，打印出原始回應
+    print(f"ChatGPT 返回的內容: {recipe}")  # 除錯：打印原始回應以進行檢查
 
     # 設定預設值，以防解析失敗
     dish_name = "未命名料理"
     ingredient_text = "未提供食材"
     recipe_text = "未提供食譜內容"
 
-    # 使用正則表達式解析各部分
-    dish_name_match = re.search(r"食譜名稱[:：](.*)", recipe)
-    ingredient_text_match = re.search(r"食材[:：](.*)", recipe)
-    recipe_text_match = re.search(r"步驟[:：](.*)", recipe)
+    # 使用更嚴格的正則表達式解析各部分
+    dish_name_match = re.search(r"(?:食譜名稱|名稱)[:：]\s*(.+)", recipe)
+    ingredient_text_match = re.search(r"(?:食材|材料)[:：]\s*(.+)", recipe)
+    recipe_text_match = re.search(r"(?:步驟|做法)[:：]\s*(.+)", recipe)
 
     # 如果匹配成功，則賦值
     if dish_name_match:
@@ -130,7 +130,8 @@ def generate_recipe_response(user_message, ingredients):
     if recipe_text_match:
         recipe_text = recipe_text_match.group(1).strip()
 
-    print(f"解析出的料理名稱: {dish_name}")  # 除錯，顯示解析結果
+    # 除錯：打印解析出的值
+    print(f"解析出的料理名稱: {dish_name}")
     print(f"解析出的食材: {ingredient_text}")
     print(f"解析出的食譜內容: {recipe_text}")
 
