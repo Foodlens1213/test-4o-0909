@@ -106,9 +106,7 @@
             font-size: 14px;
         }
 
-        .card-buttons button.delete {
-            background-color: #dc3545;
-        }
+        
 
         /* 模態框樣式 */
         .modal {
@@ -244,19 +242,7 @@
             document.getElementById("recipeModal").style.display = "none";
         }
 
-        // 刪除食譜功能
-        function deleteRecipe(recipeId) {
-            fetch(`/api/favorites?recipe_id=${recipeId}`, { method: 'DELETE' })
-                .then(response => {
-                    if (response.ok) {
-                        alert("食譜已刪除！");
-                        location.reload(); // 刷新頁面
-                    } else {
-                        alert("刪除失敗，請重試。");
-                    }
-                })
-                .catch(error => console.error("Error deleting recipe:", error));
-        }
+    
 
         // 點擊模態框外部時關閉模態框
         window.onclick = function(event) {
