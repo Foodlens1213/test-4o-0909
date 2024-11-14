@@ -52,56 +52,6 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 # 儲存處理後的食材資料（供後續使用）
 user_ingredients = {}
 
-# 儲存最愛食譜到 Firebase Firestore
-def save_recipe_to_db(user_id, dish_name, recipe_text, ingredient_text):
-    try:
-        # 手動生成一個新的 DocumentReference，這樣可以提前獲取 ID
-        doc_ref = db.collection('recipes').document()
-        doc_ref.set({
-            'user_id': user_id,
-            'dish': dish_name,
-            'ingredient': ingredient_text,
-            'recipe': recipe_text
-        })
-        return doc_ref.id  # 返回生成的文檔 ID
-    except Exception as e:
-        print(f"Firestore 插入錯誤: {e}")
-        return None
-
-# 從 Firebase Firestore 根據 recipe_id 查詢食譜
-def get_recipe_from_db(recipe_id):
-    try:
-        recipe_doc = db.collection('recipes').document(recipe_id).get()
-        if recipe_doc.exists:
-            return recipe_doc.to_dict()
-        else:
-            print("找不到對應的食譜")
-            return None
-    except Exception as e:
-        print(f"Firestore 查詢錯誤: {e}")
-        return None
-
-# 顯示收藏的食譜（前端頁面）
-@app.route('/favorites')
-def favorites_page():
-    return render_template('favorites.html')
-
-# 從 Firestore 獲取用戶的收藏食譜 (API)
-@app.route('/api/favorites', methods=['GET'])
-def get_user_favorites():
-    user_id = request.args.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'Missing user_id'}), 400
-
-    try:
-        # 查詢 favorites 集合，篩選符合 user_id 的食譜
-        favorites_ref = db.collection('favorites').where('user_id', '==', user_id)
-        docs = favorites_ref.stream()
-        favorites = [{'id': doc.id, **doc.to_dict()} for doc in docs]
-        return jsonify(favorites), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 def generate_recipe_response(user_message, ingredients):
     prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請按照以下格式生成一個適合的食譜：\n\n料理名稱: [料理名稱]\n食材: [食材列表，單行呈現]\n食譜內容: [分步驟列點，詳述步驟]"
 
