@@ -15,19 +15,23 @@ from firebase_admin import credentials, firestore
 load_dotenv()
 app = Flask(__name__)
 
-# 初始化 Firebase Admin SDK 和 Firestore
-firebase_credentials_content = os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY")
-if firebase_credentials_content:
-    firebase_credentials_path = "/tmp/firebase-credentials.json"
-    with open(firebase_credentials_path, "w") as f:
-        f.write(firebase_credentials_content)
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = firebase_credentials_path
+# 初始化 Firestore
+try:
+    db = initialize_firestore()
+except ValueError as e:
+    print(e)
 
-    cred = credentials.Certificate(firebase_credentials_path)
-    firebase_admin.initialize_app(cred)
-    db = firestore.client()
-else:
-    print("Firebase 金鑰未正確設置，請檢查環境變數")
+@app.route('/api/favorites', methods=['GET'])
+def get_user_favorites():
+    user_id = request.args.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Missing user_id'}), 400
+
+    favorites = get_user_favorites_from_db(db, user_id)
+    if favorites is not None:
+        return jsonify(favorites), 200
+    else:
+        return jsonify({'error': 'Failed to fetch favorites'}), 500
 
 # 初始化 Google Cloud Vision API 客戶端
 google_credentials_content = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_CONTENT")
