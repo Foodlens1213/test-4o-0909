@@ -7,8 +7,7 @@ import os
 from google.cloud import vision
 from dotenv import load_dotenv
 import io
-import firebase_admin
-from firebase_admin import credentials, firestore
+from firebase_service import initialize_firestore, save_recipe_to_db, get_recipe_from_db, get_user_favorites_from_db
 
 
 # 載入環境變數
