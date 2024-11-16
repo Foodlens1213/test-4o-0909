@@ -126,11 +126,13 @@ def generate_recipe_response(user_message, ingredients):
     dish_name = "未命名料理"
     ingredient_text = "未提供食材"
     recipe_text = "未提供食譜內容"
+    icook_url = "未提供來源"
 
     # 使用更嚴格的正則表達式解析各部分
     dish_name_match = re.search(r"(?:食譜名稱|名稱)[:：]\s*(.+)", recipe)
     ingredient_text_match = re.search(r"(?:食材|材料)[:：]\s*(.+)", recipe)
     recipe_text_match = re.search(r"(?:食譜內容|步驟)[:：]\s*((.|\n)+)", recipe)
+    icook_url_match = re.search(r"來源[:：]\s*(https?://[^\s]+)", recipe)
 
     # 如果匹配成功，則賦值
     if dish_name_match:
@@ -139,20 +141,23 @@ def generate_recipe_response(user_message, ingredients):
         ingredient_text = ingredient_text_match.group(1).strip()
     if recipe_text_match:
         recipe_text = recipe_text_match.group(1).strip()
+    if icook_url_match:
+        icook_url = icook_url_match.group(1).strip()
 
     # 除錯：打印解析出的值
     print(f"解析出的料理名稱: {dish_name}")
     print(f"解析出的食材: {ingredient_text}")
     print(f"解析出的食譜內容: {recipe_text}")
-
-    return dish_name, ingredient_text, recipe_text
+    print(f"解析出的 iCook 來源: {icook_url}")
+    
+    return dish_name, ingredient_text, recipe_text,icook_url
 
 
 import re
 def clean_text(text):
     # 去除無效字符和表情符號
     return re.sub(r'[^\w\s,.!?]', '', text)
-def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, recipe_number):
+def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, recipe_number, icook_url):
     recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text, ingredient_text)
     if isinstance(ingredients, list):
         ingredients_str = ','.join(ingredients)
@@ -216,12 +221,34 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingred
                 {
                     "type": "button",
                     "action": {
+                        "type": "uri",
+                        "label": "查看 iCook 食譜",
+                        "uri": icook_url
+                    },
+                    "color": "#474242",
+                    "style": "link",
+                    "height": "sm"
+                },
+                {
+                    "type": "button",
+                    "action": {
                         "type": "postback",
                         "label": "把這個食譜加入我的最愛",
                         "data": f"action=save_favorite&recipe_id={recipe_id}"
                     },
                     "color": "#474242",
                     "style": "primary",
+                    "height": "sm"
+                },
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "uri",
+                        "label": "搜尋 YouTube 影片",
+                        "uri": f"https://www.youtube.com/results?search_query={dish_name}"
+                    },
+                    "color": "#474242",
+                    "style": "link",
                     "height": "sm"
                 }
             ]
