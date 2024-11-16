@@ -158,9 +158,14 @@ def clean_text(text):
     # 去除無效字符和表情符號
     return re.sub(r'[^\w\s,.!?]', '', text)
 def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, recipe_number, icook_url):
-    # 檢查 icook_url 是否為合法 URL
-    if not icook_url.startswith("http://") and not icook_url.startswith("https://"):
+    # 確保 icook_url 是有效的 URL
+    if not icook_url or not (icook_url.startswith("http://") or icook_url.startswith("https://")):
         icook_url = "https://icook.tw"  # 預設到 iCook 主頁，避免無效 URL
+
+    # 確保 YouTube 搜尋 URL 合法
+    youtube_search_url = f"https://www.youtube.com/results?search_query={dish_name.replace(' ', '+')}"
+    if not dish_name.strip():
+        youtube_search_url = "https://www.youtube.com"  # 如果 dish_name 空，提供 YouTube 主頁
 
     recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text, ingredient_text)
     if isinstance(ingredients, list):
@@ -249,7 +254,7 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingred
                     "action": {
                         "type": "uri",
                         "label": "搜尋 YouTube 影片",
-                        "uri": f"https://www.youtube.com/results?search_query={dish_name}"
+                        "uri": youtube_search_url
                     },
                     "color": "#474242",
                     "style": "link",
@@ -264,6 +269,7 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingred
         }
     }
     return bubble
+
 
 
 # 處理圖片訊息，進行 Google Cloud Vision 的物體偵測（Label Detection）
