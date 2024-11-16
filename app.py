@@ -337,10 +337,10 @@ def handle_postback(event):
         )
         from linebot.models import FlexSendMessage
         ingredients = params.get('ingredients')
-        dish_name, ingredient_text, recipe_text = generate_recipe_response("新的食譜", ingredients)
+        dish_name, ingredient_text, recipe_text,icook_url = generate_recipe_response("新的食譜", ingredients)
         flex_message = FlexSendMessage(
             alt_text="您的新食譜",
-            contents=create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, 1)
+            contents=create_flex_message(recipe_text, user_id, dish_name, ingredient_text, icook_url ,ingredients, 1)
         )
         line_bot_api.push_message(user_id, flex_message)
 
@@ -381,11 +381,11 @@ def generate_multiple_recipes(dish_count, ingredients):
     for _ in range(dish_count):
         while True:
             # 生成食譜
-            dish_name, ingredient_text, recipe_text = generate_recipe_response("", ingredients)
+            dish_name, ingredient_text, recipe_text,icook_url = generate_recipe_response("", ingredients)
 
             # 如果食譜不重複，則加入清單並跳出迴圈
             if dish_name not in existing_dishes:
-                recipes.append((dish_name, ingredient_text, recipe_text))
+                recipes.append((dish_name, ingredient_text, recipe_text,icook_url))
                 existing_dishes.add(dish_name)
                 break
             else:
