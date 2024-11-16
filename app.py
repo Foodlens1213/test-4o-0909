@@ -233,7 +233,7 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingred
                     "action": {
                         "type": "uri",
                         "label": "查看 iCook 食譜",
-                        "uri": icook_url
+                        "uri": f"https://icook.tw/search/{dish_name.replace(' ', '%20')}"
                     },
                     "color": "#474242",
                     "style": "link",
