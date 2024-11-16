@@ -351,7 +351,7 @@ def handle_postback(event):
         dish_name, ingredient_text, recipe_text,icook_url = generate_recipe_response("新的食譜", ingredients)
         flex_message = FlexSendMessage(
             alt_text="您的新食譜",
-            contents=create_flex_message(recipe_text, user_id, dish_name, ingredient_text, icook_url ,ingredients, 1)
+            contents=create_flex_message(recipe_text, user_id, dish_name, ingredient_text, icook_url ,f"https://www.youtube.com/results?search_query={dish_name.replace(' ', '+')}",ingredients, 1,)
         )
         line_bot_api.push_message(user_id, flex_message)
 
@@ -438,7 +438,7 @@ def handle_message(event):
 
             # 準備多頁式回覆
             flex_bubbles = [
-                create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, i + 1,icook_url)
+                create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, i + 1,icook_url,f"https://www.youtube.com/results?search_query={dish_name.replace(' ', '+')}")
                 for i, (dish_name, ingredient_text, recipe_text,icook_url) in enumerate(recipes)
             ]
             carousel = {
