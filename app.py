@@ -427,8 +427,8 @@ def handle_message(event):
 
             # 準備多頁式回覆
             flex_bubbles = [
-                create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, i + 1)
-                for i, (dish_name, ingredient_text, recipe_text) in enumerate(recipes)
+                create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, i + 1,icook_url)
+                for i, (dish_name, ingredient_text, recipe_text,icook_url) in enumerate(recipes)
             ]
             carousel = {
                 "type": "carousel",
