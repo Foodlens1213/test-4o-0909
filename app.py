@@ -159,8 +159,9 @@ def clean_text(text):
     return re.sub(r'[^\w\s,.!?]', '', text)
 def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, recipe_number, icook_url,youtube_search_url):
     # 確保 icook_url 是有效的 URL
-    if not icook_url or not (icook_url.startswith("http://") or icook_url.startswith("https://")):
-        icook_url = "https://icook.tw"  # 預設到 iCook 主頁，避免無效 URL
+    icook_url = f"https://icook.tw/search/{dish_name.replace(' ', '%20')}"
+    if not dish_name.strip():
+        icook_url = "https://icook.tw"  # 如果 dish_name 空，提供 iCook 主頁
 
     # 確保 YouTube 搜尋 URL 合法
     youtube_search_url = f"https://www.youtube.com/results?search_query={dish_name.replace(' ', '+')}"
@@ -254,7 +255,7 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingred
                     "action": {
                         "type": "uri",
                         "label": "搜尋 YouTube 影片",
-                        "uri": youtube_search_url
+                        "uri": f"https://www.youtube.com/results?search_query={dish_name.replace(' ', '+')}"
                     },
                     "color": "#474242",
                     "style": "link",
