@@ -157,7 +157,7 @@ import re
 def clean_text(text):
     # 去除無效字符和表情符號
     return re.sub(r'[^\w\s,.!?]', '', text)
-def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, recipe_number, icook_url):
+def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, recipe_number, icook_url,youtube_search_url):
     # 確保 icook_url 是有效的 URL
     if not icook_url or not (icook_url.startswith("http://") or icook_url.startswith("https://")):
         icook_url = "https://icook.tw"  # 預設到 iCook 主頁，避免無效 URL
