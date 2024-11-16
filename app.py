@@ -102,7 +102,7 @@ def generate_recipe_response(user_message, ingredients):
     # 增加針對 iCook 食譜的要求
     prompt = (
         f"用戶希望做 {user_message}，可用的食材有：{ingredients}。\n"
-        "請參考 https://icook.tw/ 上的所有食譜，並按照以下格式生成兩道適合的食譜：\n\n"
+        "請參考 https://icook.tw/ 上的所有食譜，並按照以下格式生成適合的食譜：\n\n"
         "料理名稱: [料理名稱]\n"
         "食材: [食材列表，單行呈現]\n"
         "食譜內容: [分步驟列點，詳述步驟]\n"
