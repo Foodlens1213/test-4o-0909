@@ -158,16 +158,7 @@ def clean_text(text):
     # 去除無效字符和表情符號
     return re.sub(r'[^\w\s,.!?]', '', text)
 def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, recipe_number, icook_url,youtube_search_url):
-    # 確保 icook_url 是有效的 URL
-    icook_url = f"https://icook.tw/search/{dish_name.replace(' ', '%20')}"
-    if not dish_name.strip():
-        icook_url = "https://icook.tw"  # 如果 dish_name 空，提供 iCook 主頁
-
-    # 確保 YouTube 搜尋 URL 合法
-    youtube_search_url = f"https://www.youtube.com/results?search_query={dish_name.replace(' ', '+')}"
-    if not dish_name.strip():
-        youtube_search_url = "https://www.youtube.com"  # 如果 dish_name 空，提供 YouTube 主頁
-
+    
     recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text, ingredient_text)
     if isinstance(ingredients, list):
         ingredients_str = ','.join(ingredients)
@@ -231,34 +222,12 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingred
                 {
                     "type": "button",
                     "action": {
-                        "type": "uri",
-                        "label": "查看 iCook 食譜",
-                        "uri": f"https://icook.tw/search/{dish_name.replace(' ', '%20')}"
-                    },
-                    "color": "#474242",
-                    "style": "link",
-                    "height": "sm"
-                },
-                {
-                    "type": "button",
-                    "action": {
                         "type": "postback",
                         "label": "把這個食譜加入我的最愛",
                         "data": f"action=save_favorite&recipe_id={recipe_id}"
                     },
                     "color": "#474242",
                     "style": "primary",
-                    "height": "sm"
-                },
-                {
-                    "type": "button",
-                    "action": {
-                        "type": "uri",
-                        "label": "搜尋 YouTube 影片",
-                        "uri": f"https://www.youtube.com/results?search_query={dish_name.replace(' ', '+')}"
-                    },
-                    "color": "#474242",
-                    "style": "link",
                     "height": "sm"
                 }
             ]
@@ -340,21 +309,30 @@ def handle_postback(event):
     action = params.get('action')
     user_id = params.get('user_id')
 
-    # 修改 handle_postback 函數中的 `new_recipe` 行動回應
     if action == 'new_recipe':
         # 回覆"沒問題，請稍後~"
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text="沒問題，請稍後~")
         )
-        from linebot.models import FlexSendMessage
+
         ingredients = params.get('ingredients')
-        dish_name, ingredient_text, recipe_text,icook_url = generate_recipe_response("新的食譜", ingredients)
+        dish_name, ingredient_text, recipe_text, icook_url = generate_recipe_response("新的食譜", ingredients)
+
+        # 建立 Flex Message
         flex_message = FlexSendMessage(
             alt_text="您的新食譜",
-            contents=create_flex_message(recipe_text, user_id, dish_name, ingredient_text, icook_url ,f"https://www.youtube.com/results?search_query={dish_name.replace(' ', '+')}",ingredients, 1,)
+            contents=create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, 1)
         )
+        # 發送 Flex Message
         line_bot_api.push_message(user_id, flex_message)
+
+        # 發送 YouTube 和 iCook URL 作為一般訊息
+        youtube_url = f"https://www.youtube.com/results?search_query={dish_name.replace(' ', '+')}"
+        line_bot_api.push_message(user_id, [
+            TextSendMessage(text=f"iCook 搜尋結果: {icook_url}"),
+            TextSendMessage(text=f"YouTube 搜尋結果: {youtube_url}")
+        ])
 
     elif action == 'save_favorite':
         recipe_id = params.get('recipe_id')    
@@ -385,6 +363,7 @@ def handle_postback(event):
                 event.reply_token,
                 TextSendMessage(text="找不到該食譜，無法加入我的最愛")
             )
+
 
 def generate_multiple_recipes(dish_count, ingredients):
     recipes = []
