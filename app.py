@@ -98,63 +98,76 @@ def get_user_favorites():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-def generate_recipe_response(user_message, ingredients):
-    # 增加針對 iCook 食譜的要求
+def generate_recipe_response(user_message, ingredients, dish_count, soup_count, cuisine_type=""):
+    """
+    根據用戶需求生成幾菜幾湯的食譜，並支持特定料理類型。
+    """
     prompt = (
-        f"用戶希望做 {user_message}，可用的食材有：{ingredients}。\n"
-        "請參考 https://icook.tw/ 上的所有食譜，並按照以下格式生成適合的食譜：\n\n"
+        f"用戶希望製作 {cuisine_type} 料理，其中包括 {dish_count} 道菜和 {soup_count} 道湯。"
+        f"可用的食材有：{ingredients}。\n"
+        "請根據以下格式生成相應數量的食譜：\n\n"
+        "對於每道菜，請提供：\n"
         "料理名稱: [料理名稱]\n"
         "食材: [食材列表，單行呈現]\n"
         "食譜內容: [分步驟列點，詳述步驟]\n"
+        "來源: [iCook 來源鏈接]\n\n"
+        "對於每道湯，請提供：\n"
+        "料理名稱: [湯品名稱]\n"
+        "食材: [湯品食材列表，單行呈現]\n"
+        "食譜內容: [分步驟列點，詳述步驟]\n"
+        "來源: [iCook 來源鏈接]\n"
+        "請確保每個食譜適合 {cuisine_type} 風味，並以專業大廚的視角提供建議。"
     )
 
-    # 從 ChatGPT 獲取回應
     response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=[
-            {"role": "system", "content": "你是一位專業的廚師，會根據用戶的需求生成食譜，且所有食譜需來自 iCook。"},
+            {"role": "system", "content": f"你是一位專業的 {cuisine_type} 廚師，會根據用戶的需求生成高品質的食譜。"},
             {"role": "user", "content": prompt}
         ],
-        max_tokens=1000  # 增加 max_tokens 以確保足夠空間生成兩道完整食譜
+        max_tokens=1500
     )
+
     recipe = response.choices[0].message['content'].strip()
     print(f"ChatGPT 返回的內容: {recipe}")  # 除錯：打印原始回應以進行檢查
 
-    # 設定預設值，以防解析失敗
-    dish_name = "未命名料理"
-    ingredient_text = "未提供食材"
-    recipe_text = "未提供食譜內容"
+    return parse_recipes(recipe)
 
-    # 使用更嚴格的正則表達式解析各部分
-    dish_name_match = re.search(r"(?:食譜名稱|名稱)[:：]\s*(.+)", recipe)
-    ingredient_text_match = re.search(r"(?:食材|材料)[:：]\s*(.+)", recipe)
-    recipe_text_match = re.search(r"(?:食譜內容|步驟)[:：]\s*((.|\n)+)", recipe)
+def parse_recipes(recipe_text):
+    """
+    從生成的文本中解析菜和湯的食譜。
+    """
+    dishes = []
+    soups = []
 
-    # 如果匹配成功，則賦值
-    if dish_name_match:
-        dish_name = dish_name_match.group(1).strip()
-    if ingredient_text_match:
-        ingredient_text = ingredient_text_match.group(1).strip()
-    if recipe_text_match:
-        recipe_text = recipe_text_match.group(1).strip()
+    dish_pattern = r"料理名稱[:：]\s*(.+?)\n食材[:：]\s*(.+?)\n食譜內容[:：]\s*((?:.|\n)+?)\n來源[:：]\s*(https?://[^\s]+)"
+    matches = re.findall(dish_pattern, recipe_text)
 
-    # 除錯：打印解析出的值
-    print(f"解析出的料理名稱: {dish_name}")
-    print(f"解析出的食材: {ingredient_text}")
-    print(f"解析出的食譜內容: {recipe_text}")
-    return dish_name, ingredient_text, recipe_text
+    for match in matches:
+        dish_name, ingredient_text, recipe_text, icook_url = match
+        if "湯" in dish_name:
+            soups.append((dish_name, ingredient_text, recipe_text, icook_url))
+        else:
+            dishes.append((dish_name, ingredient_text, recipe_text, icook_url))
+
+    return dishes, soups
 
 
 import re
 def clean_text(text):
     # 去除無效字符和表情符號
     return re.sub(r'[^\w\s,.!?]', '', text)
-def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, recipe_number):
+def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, recipe_number, cuisine_type):
     recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text, ingredient_text)
+    
     if isinstance(ingredients, list):
         ingredients_str = ','.join(ingredients)
     else:
         ingredients_str = str(ingredients)
+
+    # YouTube 和 iCook 搜尋連結
+    youtube_url = f"https://www.youtube.com/results?search_query={dish_name.replace(' ', '+')}"
+    icook_url = f"https://icook.tw/search/{dish_name.replace(' ', '%20')}"
 
     # 設置 Flex Message 結構
     bubble = {
@@ -165,7 +178,7 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingred
             "contents": [
                 {
                     "type": "text",
-                    "text": f"料理名稱 {recipe_number}：{dish_name}",
+                    "text": f"料理 {recipe_number}：{dish_name}（{cuisine_type}）",
                     "wrap": True,
                     "weight": "bold",
                     "size": "xl"
@@ -219,6 +232,28 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingred
                     },
                     "color": "#474242",
                     "style": "primary",
+                    "height": "sm"
+                },
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "uri",
+                        "label": "查看 iCook 食譜",
+                        "uri": icook_url
+                    },
+                    "color": "#FFA500",
+                    "style": "link",
+                    "height": "sm"
+                },
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "uri",
+                        "label": "觀看 YouTube 教學",
+                        "uri": youtube_url
+                    },
+                    "color": "#FFA500",
+                    "style": "link",
                     "height": "sm"
                 }
             ]
@@ -306,23 +341,52 @@ def handle_postback(event):
         )
 
         ingredients = params.get('ingredients')
-        dish_name, ingredient_text, recipe_text = generate_recipe_response("新的食譜", ingredients)
+        dish_count = int(params.get('dish_count', 0))  # 從參數中獲取菜的數量
+        soup_count = int(params.get('soup_count', 0))  # 從參數中獲取湯的數量
+        cuisine_type = params.get('cuisine_type', '一般')  # 默認類型為一般料理
 
-        # 建立 Flex Message
-        flex_message = FlexSendMessage(
-            alt_text="您的新食譜",
-            contents=create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, 1)
+        # 生成符合幾菜幾湯的食譜
+        dishes, soups = generate_recipe_response(
+            user_message="新的食譜", 
+            ingredients=ingredients, 
+            dish_count=dish_count, 
+            soup_count=soup_count, 
+            cuisine_type=cuisine_type
         )
-        # 發送 Flex Message
-        line_bot_api.push_message(user_id, flex_message)
 
-        # 緊接著發送 YouTube 和 iCook 搜尋結果的訊息
-        youtube_url = f"https://www.youtube.com/results?search_query={dish_name.replace(' ', '+')}"
-        icook_url = f"https://icook.tw/search/{dish_name.replace(' ', '%20')}"
-        line_bot_api.push_message(user_id, [
-            TextSendMessage(text=f"iCook 搜尋結果: {icook_url}"),
-            TextSendMessage(text=f"YouTube 搜尋結果: {youtube_url}")
-        ])
+        # 構建 Flex Message 和連結消息
+        flex_messages = []
+        for i, (dish_name, ingredient_text, recipe_text, icook_url) in enumerate(dishes, start=1):
+            flex_messages.append(
+                FlexSendMessage(
+                    alt_text=f"菜 {i}: {dish_name}",
+                    contents=create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, i)
+                )
+            )
+            # 發送搜尋連結
+            youtube_url = f"https://www.youtube.com/results?search_query={dish_name.replace(' ', '+')}"
+            line_bot_api.push_message(user_id, [
+                TextSendMessage(text=f"iCook 搜尋結果: {icook_url}"),
+                TextSendMessage(text=f"YouTube 搜尋結果: {youtube_url}")
+            ])
+
+        for i, (soup_name, ingredient_text, recipe_text, icook_url) in enumerate(soups, start=1):
+            flex_messages.append(
+                FlexSendMessage(
+                    alt_text=f"湯 {i}: {soup_name}",
+                    contents=create_flex_message(recipe_text, user_id, soup_name, ingredient_text, ingredients, i)
+                )
+            )
+            # 發送搜尋連結
+            youtube_url = f"https://www.youtube.com/results?search_query={soup_name.replace(' ', '+')}"
+            line_bot_api.push_message(user_id, [
+                TextSendMessage(text=f"iCook 搜尋結果: {icook_url}"),
+                TextSendMessage(text=f"YouTube 搜尋結果: {youtube_url}")
+            ])
+
+        # 發送所有 Flex Messages
+        for flex_msg in flex_messages:
+            line_bot_api.push_message(user_id, flex_msg)
 
     elif action == 'save_favorite':
         recipe_id = params.get('recipe_id')
@@ -353,24 +417,50 @@ def handle_postback(event):
             )
 
 
-def generate_multiple_recipes(dish_count, ingredients):
-    recipes = []
-    existing_dishes = set()  # 用於追踪生成的菜名，避免重複
 
+def generate_multiple_recipes(dish_count, soup_count, ingredients, cuisine_type=""):
+    """
+    根據用戶需求生成指定數量的菜和湯，並支持特定料理類型。
+    
+    :param dish_count: 菜的數量
+    :param soup_count: 湯的數量
+    :param ingredients: 可用的食材
+    :param cuisine_type: 料理風格（如中式、日式等）
+    :return: 包含菜和湯的列表
+    """
+    recipes = {"dishes": [], "soups": []}
+    existing_names = set()  # 用於追踪生成的菜名或湯名，避免重複
+
+    # 生成菜
     for _ in range(dish_count):
         while True:
-            # 生成食譜
-            dish_name, ingredient_text, recipe_text = generate_recipe_response("", ingredients)
+            dish_name, ingredient_text, recipe_text, _ = generate_recipe_response(
+                "一道菜", ingredients, 1, 0, cuisine_type
+            )
 
-            # 如果食譜不重複，則加入清單並跳出迴圈
-            if dish_name not in existing_dishes:
-                recipes.append((dish_name, ingredient_text, recipe_text))
-                existing_dishes.add(dish_name)
+            if dish_name not in existing_names:
+                recipes["dishes"].append((dish_name, ingredient_text, recipe_text))
+                existing_names.add(dish_name)
                 break
             else:
-                print("生成的食譜重複，重新生成...")
+                print("生成的菜名重複，重新生成...")
+
+    # 生成湯
+    for _ in range(soup_count):
+        while True:
+            soup_name, ingredient_text, recipe_text, _ = generate_recipe_response(
+                "一道湯", ingredients, 0, 1, cuisine_type
+            )
+
+            if soup_name not in existing_names:
+                recipes["soups"].append((soup_name, ingredient_text, recipe_text))
+                existing_names.add(soup_name)
+                break
+            else:
+                print("生成的湯名重複，重新生成...")
 
     return recipes
+
 
 
 # 將中文數字轉換為阿拉伯數字的函數
