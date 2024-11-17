@@ -298,10 +298,10 @@ def handle_postback(event):
     data = event.postback.data
     params = dict(x.split('=') for x in data.split('&'))
     action = params.get('action')
-    user_id = params.get('user_id') or event.source.user_id  # 確保 user_id 不為 None
+    user_id = params.get('user_id') or event.source.user_id  # 確保 user_id 存在
 
     if action == 'new_recipe':
-        # 回覆"沒問題，請稍後~"
+        # 回覆 "沒問題，請稍後~"
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text="沒問題，請稍後~")
@@ -310,28 +310,26 @@ def handle_postback(event):
         ingredients = params.get('ingredients')
         dish_name, ingredient_text, recipe_text = generate_recipe_response("新的食譜", ingredients)
 
-        # 建立 Flex Message
+        # 建立並發送 Flex Message
         flex_message = FlexSendMessage(
             alt_text="您的新食譜",
             contents=create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, 1)
         )
-
-        # 發送 Flex Message
         line_bot_api.push_message(user_id, flex_message)
 
-        # 緊接著發送 YouTube 和 iCook 搜尋結果的訊息
+        # 發送 YouTube 和 iCook 搜尋連結作為一般訊息
         youtube_url = f"https://www.youtube.com/results?search_query={dish_name.replace(' ', '+')}"
         icook_url = f"https://icook.tw/search/{dish_name.replace(' ', '%20')}"
-
+        
         line_bot_api.push_message(user_id, [
-            TextSendMessage(text=f"iCook 搜尋結果: {icook_url}"),
-            TextSendMessage(text=f"YouTube 搜尋結果: {youtube_url}")
+            TextSendMessage(text=f"🔍 iCook 搜尋結果: {icook_url}"),
+            TextSendMessage(text=f"🎥 YouTube 搜尋結果: {youtube_url}")
         ])
 
     elif action == 'save_favorite':
         recipe_id = params.get('recipe_id')
-        recipe = get_recipe_from_db(recipe_id)
 
+        recipe = get_recipe_from_db(recipe_id)
         if recipe:
             try:
                 db.collection('favorites').add({
@@ -356,6 +354,13 @@ def handle_postback(event):
                 event.reply_token,
                 TextSendMessage(text="找不到該食譜，無法加入我的最愛")
             )
+
+    else:
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text="抱歉，我不太明白您的需求。")
+        )
+
 
 
 def generate_multiple_recipes(dish_count, ingredients):
