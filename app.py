@@ -307,7 +307,7 @@ def handle_postback(event):
     data = event.postback.data
     params = dict(x.split('=') for x in data.split('&'))
     action = params.get('action')
-    user_id = params.get('user_id')
+    user_id = params.get('user_id') or event.source.user_id  # 確保 user_id 存在
 
     if action == 'new_recipe':
         # 回覆"沒問題，請稍後~"
@@ -327,7 +327,7 @@ def handle_postback(event):
         # 發送 Flex Message
         line_bot_api.push_message(user_id, flex_message)
 
-        # 發送 YouTube 和 iCook URL 作為一般訊息
+        # 緊接著發送 YouTube 和 iCook URL 作為一般訊息
         youtube_url = f"https://www.youtube.com/results?search_query={dish_name.replace(' ', '+')}"
         line_bot_api.push_message(user_id, [
             TextSendMessage(text=f"iCook 搜尋結果: {icook_url}"),
@@ -335,25 +335,25 @@ def handle_postback(event):
         ])
 
     elif action == 'save_favorite':
-        recipe_id = params.get('recipe_id')    
-        user_id = user_id or event.source.user_id  # 確保 user_id 不為 null
-        recipe = get_recipe_from_db(recipe_id)
+        recipe_id = params.get('recipe_id')
 
+        recipe = get_recipe_from_db(recipe_id)
         if recipe:
-            # 將該食譜儲存在 favorites 集合中
             try:
+                # 儲存食譜到 favorites 集合
                 db.collection('favorites').add({
-                    'user_id': user_id,  # 確保此處使用了正確的 user_id
+                    'user_id': user_id,
                     'dish': recipe['dish'],
                     'ingredient': recipe['ingredient'],
                     'recipe': recipe['recipe'],
-                    'recipe_id': recipe_id  # 用於識別原始食譜
+                    'recipe_id': recipe_id
                 })
                 line_bot_api.reply_message(
                     event.reply_token,
                     TextSendMessage(text="已成功將食譜加入我的最愛!")
                 )
             except Exception as e:
+                print(f"儲存最愛時發生錯誤: {e}")
                 line_bot_api.reply_message(
                     event.reply_token,
                     TextSendMessage(text="抱歉，儲存過程中發生錯誤。")
@@ -363,6 +363,14 @@ def handle_postback(event):
                 event.reply_token,
                 TextSendMessage(text="找不到該食譜，無法加入我的最愛")
             )
+
+    else:
+        # 未知的 action
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text="抱歉，我不太明白您的需求。")
+        )
+
 
 
 def generate_multiple_recipes(dish_count, ingredients):
