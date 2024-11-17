@@ -142,19 +142,19 @@ def generate_recipe_response(user_message, ingredients, dish_count=0, soup_count
 
 def parse_recipes(recipe_text):
     """
-    解析從 ChatGPT 返回的多道菜或湯的食譜。
+    解析 ChatGPT 返回的多道菜或湯的食譜。
     
-    :param recipe_text: 完整的食譜文本，可能包含多道菜或湯
-    :return: 解析後的食譜列表，每個食譜包含 (料理名稱, 食材, 步驟, 來源 URL)
+    :param recipe_text: 完整的食譜文本
+    :return: 每道食譜包含 (料理名稱, 食材, 步驟, 來源 URL) 的列表
     """
     recipe_pattern = r"料理名稱[:：]\s*(.+?)\n食材[:：]\s*(.+?)\n食譜內容[:：]\s*((?:.|\n)+?)\n來源[:：]\s*(https?://[^\s]+)"
     matches = re.findall(recipe_pattern, recipe_text)
-    
+
     if matches:
-        return matches  # 返回多個食譜的列表
+        return matches
     else:
-        print("無法解析食譜內容")
-        return []  # 空列表表示沒有匹配的食譜
+        print("無法解析食譜內容，請檢查輸入格式是否正確")
+        return []
 
 
 import re
