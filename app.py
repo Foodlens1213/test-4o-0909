@@ -106,7 +106,6 @@ def generate_recipe_response(user_message, ingredients):
         "料理名稱: [料理名稱]\n"
         "食材: [食材列表，單行呈現]\n"
         "食譜內容: [分步驟列點，詳述步驟]\n"
-        "來源: [iCook 來源鏈接]"
     )
 
     # 從 ChatGPT 獲取回應
@@ -143,7 +142,6 @@ def generate_recipe_response(user_message, ingredients):
     print(f"解析出的料理名稱: {dish_name}")
     print(f"解析出的食材: {ingredient_text}")
     print(f"解析出的食譜內容: {recipe_text}")
-
     return dish_name, ingredient_text, recipe_text
 
 
@@ -298,10 +296,10 @@ def handle_postback(event):
     data = event.postback.data
     params = dict(x.split('=') for x in data.split('&'))
     action = params.get('action')
-    user_id = params.get('user_id') or event.source.user_id  # 確保 user_id 存在
+    user_id = params.get('user_id') or event.source.user_id  # 確保 user_id 不為 None
 
     if action == 'new_recipe':
-        # 回覆 "沒問題，請稍後~"
+        # 回覆"沒問題，請稍後~"
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text="沒問題，請稍後~")
@@ -310,25 +308,24 @@ def handle_postback(event):
         ingredients = params.get('ingredients')
         dish_name, ingredient_text, recipe_text = generate_recipe_response("新的食譜", ingredients)
 
-        # 建立並發送 Flex Message
+        # 建立 Flex Message
         flex_message = FlexSendMessage(
             alt_text="您的新食譜",
             contents=create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, 1)
         )
+        # 發送 Flex Message
         line_bot_api.push_message(user_id, flex_message)
 
-        # 發送 YouTube 和 iCook 搜尋連結作為一般訊息
+        # 緊接著發送 YouTube 和 iCook 搜尋結果的訊息
         youtube_url = f"https://www.youtube.com/results?search_query={dish_name.replace(' ', '+')}"
         icook_url = f"https://icook.tw/search/{dish_name.replace(' ', '%20')}"
-        
         line_bot_api.push_message(user_id, [
-            TextSendMessage(text=f"🔍 iCook 搜尋結果: {icook_url}"),
-            TextSendMessage(text=f"🎥 YouTube 搜尋結果: {youtube_url}")
+            TextSendMessage(text=f"iCook 搜尋結果: {icook_url}"),
+            TextSendMessage(text=f"YouTube 搜尋結果: {youtube_url}")
         ])
 
     elif action == 'save_favorite':
         recipe_id = params.get('recipe_id')
-
         recipe = get_recipe_from_db(recipe_id)
         if recipe:
             try:
@@ -354,8 +351,6 @@ def handle_postback(event):
                 event.reply_token,
                 TextSendMessage(text="找不到該食譜，無法加入我的最愛")
             )
-
-
 
 
 def generate_multiple_recipes(dish_count, ingredients):
@@ -392,46 +387,52 @@ def handle_message(event):
     user_id = event.source.user_id
     user_message = event.message.text
 
-    if "道" in user_message:
-        # 從使用者訊息提取數字，表示需要幾道菜
-        dish_count = None
-        # 優先檢查阿拉伯數字
-        if re.search(r"\d+", user_message):
-            dish_count = int(re.search(r"\d+", user_message).group())
-        # 若無阿拉伯數字，檢查漢字
-        else:
-            dish_count = chinese_to_digit(user_message)  # 傳入 user_message
-        # 預設為1道菜，如果數字解析成功，則使用提取到的數字
-        dish_count = dish_count if dish_count is not None else 1
-        ingredients = user_ingredients.get(user_id, None)
+    # 檢查訊息中是否包含「道」以及「菜」或「湯」
+    dish_count = 0
+    soup_count = 0
 
-        if ingredients:
-            # 根據需要的數量生成多道料理
-            recipes = generate_multiple_recipes(dish_count, ingredients)
+    # 解析幾菜幾湯
+    dish_match = re.search(r"(\d+|[一二兩三四五六七八九十]+)菜", user_message)
+    soup_match = re.search(r"(\d+|[一二兩三四五六七八九十]+)湯", user_message)
 
-            # 準備多頁式回覆
-            flex_bubbles = [
-                create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, i + 1)
-                for i, (dish_name, ingredient_text, recipe_text) in enumerate(recipes)
-            ]
-            carousel = {
-                "type": "carousel",
-                "contents": flex_bubbles
-            }
-            line_bot_api.reply_message(
-                event.reply_token, 
-                FlexSendMessage(alt_text="您的多道食譜", contents=carousel)
-            )
-        else:
-            line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(text="請先上傳圖片來辨識食材。")
-            )
+    if dish_match:
+        dish_count = int(dish_match.group(1)) if dish_match.group(1).isdigit() else chinese_to_digit(dish_match.group(1))
+    if soup_match:
+        soup_count = int(soup_match.group(1)) if soup_match.group(1).isdigit() else chinese_to_digit(soup_match.group(1))
+
+    total_count = dish_count + soup_count
+
+    ingredients = user_ingredients.get(user_id, None)
+
+    if ingredients:
+        # 根據需要的數量生成多道料理
+        recipes = generate_multiple_recipes(total_count, ingredients)
+
+        # 準備多頁式回覆
+        flex_bubbles = [
+            create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, i + 1)
+            for i, (dish_name, ingredient_text, recipe_text) in enumerate(recipes)
+        ]
+        carousel = {
+            "type": "carousel",
+            "contents": flex_bubbles
+        }
+
+        # 回覆 Flex Message
+        line_bot_api.reply_message(
+            event.reply_token,
+            FlexSendMessage(alt_text="您的多道食譜", contents=carousel)
+        )
+
+        # 依據類型分別發送文字訊息提示
+        line_bot_api.push_message(user_id, TextSendMessage(text=f"您選擇了 {dish_count} 菜和 {soup_count} 湯。"))
+
     else:
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text="請告訴我您想要做什麼料理及份數。")
+            TextSendMessage(text="請先上傳圖片來辨識食材。")
         )
+
 
 
 # 顯示特定食譜的詳細內容 (供 "查看更多" 使用)
@@ -471,3 +472,7 @@ def health_check():
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+0 commit comments
+Comments
+0
+ (0)
