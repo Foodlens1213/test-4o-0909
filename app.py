@@ -496,12 +496,12 @@ def handle_message(event):
 
     if ingredients:
         # 根據需要的數量生成多道料理
-        recipes = generate_multiple_recipes(total_count, ingredients)
+        recipes = generate_multiple_recipes(dish_count, soup_count, ingredients)
 
         # 準備多頁式回覆
         flex_bubbles = [
             create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, i + 1)
-            for i, (dish_name, ingredient_text, recipe_text) in enumerate(recipes)
+            for i, (dish_name, ingredient_text, recipe_text) in enumerate(recipes["dishes"] + recipes["soups"])
         ]
         carousel = {
             "type": "carousel",
