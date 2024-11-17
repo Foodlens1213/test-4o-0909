@@ -157,7 +157,7 @@ import re
 def clean_text(text):
     # 去除無效字符和表情符號
     return re.sub(r'[^\w\s,.!?]', '', text)
-def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, recipe_number, icook_url,youtube_search_url):
+def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, recipe_number):
     
     recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text, ingredient_text)
     if isinstance(ingredients, list):
