@@ -133,25 +133,29 @@ def generate_recipe_response(user_message, ingredients, dish_count=0, soup_count
         ],
         max_tokens=1500
     )
-
-    recipe = response.choices[0].message['content'].strip()
-    print(f"ChatGPT 返回的內容: {recipe}")  # 除錯：打印原始回應以進行檢查
-
-    return parse_recipes(recipe)
-
-def parse_single_recipe(recipe_text):
-    """
-    解析單道菜或湯的食譜。
     
-    :param recipe_text: 完整的食譜文本
-    :return: 料理名稱、食材、步驟、來源 URL
+    recipe_text = response.choices[0].message['content'].strip()
+    print(f"ChatGPT 返回的內容: {recipe_text}")
+
+    # 使用 `parse_recipes` 解析
+    return parse_recipes(recipe_text)
+
+def parse_recipes(recipe_text):
     """
-    dish_pattern = r"料理名稱[:：]\s*(.+?)\n食材[:：]\s*(.+?)\n食譜內容[:：]\s*((?:.|\n)+?)\n來源[:：]\s*(https?://[^\s]+)"
-    match = re.search(dish_pattern, recipe_text)
-    if match:
-        return match.groups()
+    解析從 ChatGPT 返回的多道菜或湯的食譜。
+    
+    :param recipe_text: 完整的食譜文本，可能包含多道菜或湯
+    :return: 解析後的食譜列表，每個食譜包含 (料理名稱, 食材, 步驟, 來源 URL)
+    """
+    recipe_pattern = r"料理名稱[:：]\s*(.+?)\n食材[:：]\s*(.+?)\n食譜內容[:：]\s*((?:.|\n)+?)\n來源[:：]\s*(https?://[^\s]+)"
+    matches = re.findall(recipe_pattern, recipe_text)
+    
+    if matches:
+        return matches  # 返回多個食譜的列表
     else:
-        return "未命名料理", "無食材", "無食譜內容", "無來源"
+        print("無法解析食譜內容")
+        return []  # 空列表表示沒有匹配的食譜
+
 
 import re
 def clean_text(text):
@@ -500,8 +504,8 @@ def handle_message(event):
 
         # 準備多頁式回覆
         flex_bubbles = [
-            create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, i + 1)
-            for i, (dish_name, ingredient_text, recipe_text) in enumerate(recipes["dishes"] + recipes["soups"])
+            create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, i + 1,"")
+            for i, (dish_name, ingredient_text, recipe_text, _) in enumerate(recipes["dishes"] + recipes["soups"])
         ]
         carousel = {
             "type": "carousel",
