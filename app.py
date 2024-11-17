@@ -102,7 +102,7 @@ def generate_recipe_response(user_message, ingredients):
     # 增加針對 iCook 食譜的要求
     prompt = (
         f"用戶希望做 {user_message}，可用的食材有：{ingredients}。\n"
-        "請參考 https://icook.tw/ 上的所有食譜，並按照以下格式生成適合的食譜：\n\n"
+        "請參考 https://icook.tw/ 上的所有食譜，並按照以下格式生成兩道適合的食譜：\n\n"
         "料理名稱: [料理名稱]\n"
         "食材: [食材列表，單行呈現]\n"
         "食譜內容: [分步驟列點，詳述步驟]\n"
@@ -118,7 +118,6 @@ def generate_recipe_response(user_message, ingredients):
         ],
         max_tokens=1000  # 增加 max_tokens 以確保足夠空間生成兩道完整食譜
     )
-
     recipe = response.choices[0].message['content'].strip()
     print(f"ChatGPT 返回的內容: {recipe}")  # 除錯：打印原始回應以進行檢查
 
@@ -126,13 +125,11 @@ def generate_recipe_response(user_message, ingredients):
     dish_name = "未命名料理"
     ingredient_text = "未提供食材"
     recipe_text = "未提供食譜內容"
-    icook_url = "未提供來源"
 
     # 使用更嚴格的正則表達式解析各部分
     dish_name_match = re.search(r"(?:食譜名稱|名稱)[:：]\s*(.+)", recipe)
     ingredient_text_match = re.search(r"(?:食材|材料)[:：]\s*(.+)", recipe)
     recipe_text_match = re.search(r"(?:食譜內容|步驟)[:：]\s*((.|\n)+)", recipe)
-    icook_url_match = re.search(r"來源[:：]\s*(https?://[^\s]+)", recipe)
 
     # 如果匹配成功，則賦值
     if dish_name_match:
@@ -141,16 +138,13 @@ def generate_recipe_response(user_message, ingredients):
         ingredient_text = ingredient_text_match.group(1).strip()
     if recipe_text_match:
         recipe_text = recipe_text_match.group(1).strip()
-    if icook_url_match:
-        icook_url = icook_url_match.group(1).strip()
 
     # 除錯：打印解析出的值
     print(f"解析出的料理名稱: {dish_name}")
     print(f"解析出的食材: {ingredient_text}")
     print(f"解析出的食譜內容: {recipe_text}")
-    print(f"解析出的 iCook 來源: {icook_url}")
-    
-    return dish_name, ingredient_text, recipe_text,icook_url
+
+    return dish_name, ingredient_text, recipe_text
 
 
 import re
@@ -158,7 +152,6 @@ def clean_text(text):
     # 去除無效字符和表情符號
     return re.sub(r'[^\w\s,.!?]', '', text)
 def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, recipe_number):
-    
     recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text, ingredient_text)
     if isinstance(ingredients, list):
         ingredients_str = ','.join(ingredients)
@@ -240,8 +233,6 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingred
     }
     return bubble
 
-
-
 # 處理圖片訊息，進行 Google Cloud Vision 的物體偵測（Label Detection）
 @handler.add(MessageEvent, message=ImageMessage)
 def handle_image_message(event):
@@ -307,7 +298,7 @@ def handle_postback(event):
     data = event.postback.data
     params = dict(x.split('=') for x in data.split('&'))
     action = params.get('action')
-    user_id = params.get('user_id') or event.source.user_id  # 確保 user_id 存在
+    user_id = params.get('user_id') or event.source.user_id  # 確保 user_id 不為 None
 
     if action == 'new_recipe':
         # 回覆"沒問題，請稍後~"
@@ -317,18 +308,21 @@ def handle_postback(event):
         )
 
         ingredients = params.get('ingredients')
-        dish_name, ingredient_text, recipe_text, icook_url = generate_recipe_response("新的食譜", ingredients)
+        dish_name, ingredient_text, recipe_text = generate_recipe_response("新的食譜", ingredients)
 
         # 建立 Flex Message
         flex_message = FlexSendMessage(
             alt_text="您的新食譜",
             contents=create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, 1)
         )
+
         # 發送 Flex Message
         line_bot_api.push_message(user_id, flex_message)
 
-        # 緊接著發送 YouTube 和 iCook URL 作為一般訊息
+        # 緊接著發送 YouTube 和 iCook 搜尋結果的訊息
         youtube_url = f"https://www.youtube.com/results?search_query={dish_name.replace(' ', '+')}"
+        icook_url = f"https://icook.tw/search/{dish_name.replace(' ', '%20')}"
+
         line_bot_api.push_message(user_id, [
             TextSendMessage(text=f"iCook 搜尋結果: {icook_url}"),
             TextSendMessage(text=f"YouTube 搜尋結果: {youtube_url}")
@@ -336,11 +330,10 @@ def handle_postback(event):
 
     elif action == 'save_favorite':
         recipe_id = params.get('recipe_id')
-
         recipe = get_recipe_from_db(recipe_id)
+
         if recipe:
             try:
-                # 儲存食譜到 favorites 集合
                 db.collection('favorites').add({
                     'user_id': user_id,
                     'dish': recipe['dish'],
@@ -364,14 +357,6 @@ def handle_postback(event):
                 TextSendMessage(text="找不到該食譜，無法加入我的最愛")
             )
 
-    else:
-        # 未知的 action
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text="抱歉，我不太明白您的需求。")
-        )
-
-
 
 def generate_multiple_recipes(dish_count, ingredients):
     recipes = []
@@ -380,11 +365,11 @@ def generate_multiple_recipes(dish_count, ingredients):
     for _ in range(dish_count):
         while True:
             # 生成食譜
-            dish_name, ingredient_text, recipe_text,icook_url = generate_recipe_response("", ingredients)
+            dish_name, ingredient_text, recipe_text = generate_recipe_response("", ingredients)
 
             # 如果食譜不重複，則加入清單並跳出迴圈
             if dish_name not in existing_dishes:
-                recipes.append((dish_name, ingredient_text, recipe_text,icook_url))
+                recipes.append((dish_name, ingredient_text, recipe_text))
                 existing_dishes.add(dish_name)
                 break
             else:
@@ -426,8 +411,8 @@ def handle_message(event):
 
             # 準備多頁式回覆
             flex_bubbles = [
-                create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, i + 1,icook_url,f"https://www.youtube.com/results?search_query={dish_name.replace(' ', '+')}")
-                for i, (dish_name, ingredient_text, recipe_text,icook_url) in enumerate(recipes)
+                create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, i + 1)
+                for i, (dish_name, ingredient_text, recipe_text) in enumerate(recipes)
             ]
             carousel = {
                 "type": "carousel",
