@@ -98,9 +98,15 @@ def get_user_favorites():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-def generate_recipe_response(user_message, ingredients, dish_count, soup_count, cuisine_type=""):
+def generate_recipe_response(user_message, ingredients, dish_count=0, soup_count=0, cuisine_type=""):
     """
     根據用戶需求生成幾菜幾湯的食譜，並支持特定料理類型。
+    :param user_message: 描述需求的文字，例如「一道菜」或「一道湯」
+    :param ingredients: 食材列表
+    :param dish_count: 菜的數量
+    :param soup_count: 湯的數量
+    :param cuisine_type: 料理風格（如中式、日式等）
+    :return: 菜或湯的名稱、食材、步驟、來源連結
     """
     prompt = (
         f"用戶希望製作 {cuisine_type} 料理，其中包括 {dish_count} 道菜和 {soup_count} 道湯。"
@@ -133,25 +139,19 @@ def generate_recipe_response(user_message, ingredients, dish_count, soup_count, 
 
     return parse_recipes(recipe)
 
-def parse_recipes(recipe_text):
+def parse_single_recipe(recipe_text):
     """
-    從生成的文本中解析菜和湯的食譜。
+    解析單道菜或湯的食譜。
+    
+    :param recipe_text: 完整的食譜文本
+    :return: 料理名稱、食材、步驟、來源 URL
     """
-    dishes = []
-    soups = []
-
     dish_pattern = r"料理名稱[:：]\s*(.+?)\n食材[:：]\s*(.+?)\n食譜內容[:：]\s*((?:.|\n)+?)\n來源[:：]\s*(https?://[^\s]+)"
-    matches = re.findall(dish_pattern, recipe_text)
-
-    for match in matches:
-        dish_name, ingredient_text, recipe_text, icook_url = match
-        if "湯" in dish_name:
-            soups.append((dish_name, ingredient_text, recipe_text, icook_url))
-        else:
-            dishes.append((dish_name, ingredient_text, recipe_text, icook_url))
-
-    return dishes, soups
-
+    match = re.search(dish_pattern, recipe_text)
+    if match:
+        return match.groups()
+    else:
+        return "未命名料理", "無食材", "無食譜內容", "無來源"
 
 import re
 def clean_text(text):
