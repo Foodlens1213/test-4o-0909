@@ -138,8 +138,7 @@ def clean_text(text):
     # 去除無效字符和表情符號
     return re.sub(r'[^\w\s,.!?]', '', text)
 def create_flex_message(dish_name, ingredient_text, recipe_text, user_id, recipe_number):
-    print(f"正在生成 Flex Message，解析的數據如下:\n料理名稱: {dish_name}\n食材: {ingredient_text}\n食譜內容: {recipe_text}\n")
-    print(f"Flex Message 數據：\n料理名稱: {dish_name}\n食材: {ingredient_text}\n食譜內容: {recipe_text}\n")
+
     recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text, ingredient_text)
 
     bubble = {
