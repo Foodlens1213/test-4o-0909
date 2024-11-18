@@ -120,12 +120,16 @@ def generate_recipe_response(dish_count, soup_count, ingredients):
         max_tokens=1500
     )
     recipe_text = response.choices[0].message['content'].strip()
-    print(f"ChatGPT 返回的內容: {recipe_text}")
+    print(f"ChatGPT 返回的內容:\n{recipe_text}")
 
-    recipe_pattern = r"料理名稱[:：]\s*(.+?)\n食材[:：]\s*(.+?)\n食譜內容[:：]\s*((?:.|\n)+?)"
+    # 使用正則提取各部分
+    recipe_pattern = r"料理名稱[:：]\s*(.+?)\n食材[:：]\s*(.+?)\n食譜內容[:：]\s*((?:\d+\.\s?.+?\n?)+)"
     matches = re.findall(recipe_pattern, recipe_text)
 
-    return matches  # 返回一組匹配食譜的清單
+    if not matches:
+        print("未成功解析到食譜內容，請檢查格式")
+    return matches
+
 
 
 
@@ -134,6 +138,7 @@ def clean_text(text):
     # 去除無效字符和表情符號
     return re.sub(r'[^\w\s,.!?]', '', text)
 def create_flex_message(dish_name, ingredient_text, recipe_text, user_id, recipe_number):
+    print(f"正在生成 Flex Message，解析的數據如下:\n料理名稱: {dish_name}\n食材: {ingredient_text}\n食譜內容: {recipe_text}\n")
     print(f"Flex Message 數據：\n料理名稱: {dish_name}\n食材: {ingredient_text}\n食譜內容: {recipe_text}\n")
     recipe_id = save_recipe_to_db(user_id, dish_name, recipe_text, ingredient_text)
 
