@@ -125,7 +125,8 @@ def generate_recipe_response(dish_count, soup_count, ingredients):
     recipe_pattern = r"料理名稱[:：]\s*(.+?)\n食材[:：]\s*(.+?)\n食譜內容[:：]\s*((?:.|\n)+?)"
     matches = re.findall(recipe_pattern, recipe_text)
 
-    return matches
+    return matches  # 返回一組匹配食譜的清單
+
 
 
 import re
@@ -277,30 +278,21 @@ def handle_postback(event):
     user_id = params.get('user_id') or event.source.user_id  # 確保 user_id 不為 None
 
     if action == 'new_recipe':
-        # 回覆"沒問題，請稍後~"
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text="沒問題，請稍後~")
         )
 
         ingredients = params.get('ingredients')
-        dish_name, ingredient_text, recipe_text = generate_recipe_response("新的食譜", ingredients)
+        recipes = generate_recipe_response(1, 0, ingredients)  # 獲取新食譜
 
-        # 建立 Flex Message
-        flex_message = FlexSendMessage(
-            alt_text="您的新食譜",
-            contents=create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, 1)
-        )
-        # 發送 Flex Message
-        line_bot_api.push_message(user_id, flex_message)
-
-        # 緊接著發送 YouTube 和 iCook 搜尋結果的訊息
-        youtube_url = f"https://www.youtube.com/results?search_query={dish_name.replace(' ', '+')}"
-        icook_url = f"https://icook.tw/search/{dish_name.replace(' ', '%20')}"
-        line_bot_api.push_message(user_id, [
-            TextSendMessage(text=f"iCook 搜尋結果: {icook_url}"),
-            TextSendMessage(text=f"YouTube 搜尋結果: {youtube_url}")
-        ])
+        if recipes:
+            for dish_name, ingredient_text, recipe_text in recipes:
+                flex_message = FlexSendMessage(
+                    alt_text="您的新食譜",
+                    contents=create_flex_message(dish_name, ingredient_text, recipe_text, user_id, 1)
+                )
+                line_bot_api.push_message(user_id, flex_message)
 
     elif action == 'save_favorite':
         recipe_id = params.get('recipe_id')
@@ -324,11 +316,6 @@ def handle_postback(event):
                     event.reply_token,
                     TextSendMessage(text="抱歉，儲存過程中發生錯誤。")
                 )
-        else:
-            line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(text="找不到該食譜，無法加入我的最愛")
-            )
 
 
 def generate_multiple_recipes(dish_count, ingredients):
@@ -352,12 +339,21 @@ def generate_multiple_recipes(dish_count, ingredients):
 
 
 # 將中文數字轉換為阿拉伯數字的函數
-def chinese_to_digit(user_message):
-    chinese_digits = {'零': 0, '一': 1, '二': 2, '兩': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9}
-    chinese_num = re.search(r"[零一二兩三四五六七八九]", user_message)
-    if chinese_num:
-        return chinese_digits[chinese_num.group()]
-    return None
+def chinese_to_digit(chinese_num):
+    chinese_digits = {'零': 0, '一': 1, '二': 2, '兩': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10}
+    
+    if '十' in chinese_num:
+        parts = chinese_num.split('十')
+        if len(parts) == 2:
+            # e.g., "三十" or "三十六"
+            tens = chinese_digits.get(parts[0], 1)  # "三十" -> 3; "十六" -> 1
+            units = chinese_digits.get(parts[1], 0)  # "三十六" -> 6; "十" -> 0
+            return tens * 10 + units
+        else:
+            return 10  # "十" means 10
+    else:
+        return chinese_digits.get(chinese_num, 0)
+
 
 # 更新 handle_message 函數
 @handler.add(MessageEvent, message=TextMessage)
@@ -365,27 +361,42 @@ def handle_message(event):
     user_id = event.source.user_id
     user_message = event.message.text
 
+    # 解析 "菜" 與 "湯" 數量
     dish_match = re.search(r"(\d+|[一二兩三四五六七八九十]+)菜", user_message)
     soup_match = re.search(r"(\d+|[一二兩三四五六七八九十]+)湯", user_message)
 
-    dish_count = int(dish_match.group(1)) if dish_match else 0
-    soup_count = int(soup_match.group(1)) if soup_match else 0
+    dish_count = 0
+    soup_count = 0
 
+    # 中文數字轉阿拉伯數字
+    if dish_match:
+        dish_count = int(dish_match.group(1)) if dish_match.group(1).isdigit() else chinese_to_digit(dish_match.group(1))
+    if soup_match:
+        soup_count = int(soup_match.group(1)) if soup_match.group(1).isdigit() else chinese_to_digit(soup_match.group(1))
+
+    # 確認用戶已經上傳了圖片食材
     ingredients = user_ingredients.get(user_id)
     if ingredients:
+        # 生成食譜
         recipes = generate_recipe_response(dish_count, soup_count, ingredients)
-        flex_messages = [
-            create_flex_message(dish_name, ingredient_text, recipe_text, user_id, i + 1)
-            for i, (dish_name, ingredient_text, recipe_text) in enumerate(recipes)
-        ]
-        line_bot_api.reply_message(
-            event.reply_token,
-            FlexSendMessage(alt_text="您的多道食譜", contents={"type": "carousel", "contents": flex_messages})
-        )
+        if recipes:
+            flex_messages = [
+                create_flex_message(dish_name, ingredient_text, recipe_text, user_id, i + 1)
+                for i, (dish_name, ingredient_text, recipe_text) in enumerate(recipes)
+            ]
+            line_bot_api.reply_message(
+                event.reply_token,
+                FlexSendMessage(alt_text="您的多道食譜", contents={"type": "carousel", "contents": flex_messages})
+            )
+        else:
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="抱歉，未能生成任何食譜，請稍後再試。")
+            )
     else:
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text="請先上傳圖片辨識食材。")
+            TextSendMessage(text="請先上傳圖片來辨識食材。")
         )
 
 
