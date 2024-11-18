@@ -123,7 +123,7 @@ def generate_recipe_response(dish_count, soup_count, ingredients):
     print(f"ChatGPT 返回的內容:\n{recipe_text}")
 
     # 使用正則提取各部分
-    recipe_pattern = r"料理名稱[:：]\s*(.+?)\n食材[:：]\s*(.+?)\n食譜內容[:：]\s*((?:\d+\.\s?.+?\n?)+)"
+    recipe_pattern = r"料理名稱[:：]\s*(.+?)\n食材[:：]\s*(.+?)\n食譜內容[:：]\s*(.+?)(?:\n|$)"
     matches = re.findall(recipe_pattern, recipe_text)
 
     if not matches:
