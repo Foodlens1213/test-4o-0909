@@ -372,7 +372,7 @@ def handle_message(event):
     user_id = event.source.user_id
     user_message = event.message.text
 
-    if "道" in user_message:
+    if "道" in user_message or "菜" in user_message:
         # 從使用者訊息提取數字，表示需要幾道菜
         dish_count = None
         # 優先檢查阿拉伯數字
