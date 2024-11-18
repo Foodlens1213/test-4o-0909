@@ -98,17 +98,17 @@ def get_user_favorites():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-def generate_recipe_response(user_message, ingredients):
-    prompt = f"用戶希望做 {user_message}，可用的食材有：{ingredients}。請使用 https://icook.tw/ 上的所有食譜，並按照以下格式生成一個適合的食譜：\n\n料理名稱: [料理名稱]\n食材: [食材列表，單行呈現]\n食譜內容: [分步驟列點，詳述步驟]"
+def generate_recipe_response(dishes_type, user_message, ingredients):
+    prompt = f"用戶希望做 {dishes_type}料理{user_message}，可用的食材有：{ingredients}。請使用 https://icook.tw/ 上的所有食譜，並按照以下格式生成一個適合的食譜：\n\n料理名稱: [料理名稱]\n食材: [食材列表，單行呈現]\n食譜內容: [分步驟列點，詳述步驟]"
 
     # 從 ChatGPT 獲取回應
     response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=[
-            {"role": "system", "content":f"你是一位專業的{user_message}廚師，會根據用戶的需求生成食譜。"},
+            {"role": "system", "content":f"你是一位專業的{dishes_type}廚師，會根據用戶的需求生成食譜。"},
             {"role": "user", "content": prompt}
         ],
-        max_tokens=800
+        max_tokens=1000
     )
     recipe = response.choices[0].message['content'].strip()
     print(f"ChatGPT 返回的內容: {recipe}")  # 除錯：打印原始回應以進行檢查
@@ -410,7 +410,7 @@ def handle_message(event):
     else:
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text="請告訴我您想要做什麼料理及份數。")
+            TextSendMessage(text="請告訴我您想要做什麼料理及道數。")
         )
 
 
