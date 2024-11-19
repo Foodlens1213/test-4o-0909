@@ -99,7 +99,7 @@ def get_user_favorites():
         return jsonify({'error': str(e)}), 500
 
 def generate_recipe_response(dishes_type, user_message, ingredients):
-    prompt = f"用戶希望做 {dishes_type}料理{user_message}，可用的食材有：{ingredients}。請使用 https://icook.tw/ 上的所有食譜，並按照以下格式生成一個適合的食譜：\n\n料理名稱: [料理名稱]\n食材: [食材列表，單行呈現]\n食譜內容: [分步驟列點，詳述步驟]"
+    prompt = f"用戶希望做 {dishes_type}料理{user_message}，可用的食材有：{ingredients}。請使用 https://icook.tw/ 上的所有食譜，不要附上食譜連結，並按照以下格式生成一個適合的食譜：\n\n料理名稱: [料理名稱]\n食材: [食材列表，單行呈現]\n食譜內容: [分步驟列點，詳述步驟]"
 
     # 從 ChatGPT 獲取回應
     response = openai.ChatCompletion.create(
