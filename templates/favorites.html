@@ -182,7 +182,7 @@
                 document.getElementById("userName").textContent = `歡迎, ${profile.displayName}`;
         
                 // 確保 userId 已編碼，發送請求獲取收藏的食譜
-                fetch(`/favorites?user_id=${encodeURIComponent(userId)}`)
+                fetch(`/api/favorites?user_id=${encodeURIComponent(userId)}`)
                     .then(response => response.json())
                     .then(data => {
                         console.log("收藏的食譜數據:", data); // 調試：打印後端返回的數據
