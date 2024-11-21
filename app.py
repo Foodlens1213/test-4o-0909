@@ -371,6 +371,7 @@ def get_user_favorites_api():
         else:
             return jsonify({'error': 'Failed to retrieve favorites'}), 500
     except Exception as e:
+        print(f"API 錯誤: {e}")  # 打印詳細日誌
         return jsonify({'error': str(e)}), 500
 
         
