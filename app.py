@@ -393,12 +393,16 @@ def handle_get_recipe(recipe_id):
         
 @app.route('/api/favorites/<recipe_id>', methods=['DELETE'])
 def delete_recipe(recipe_id):
+    print(f"收到刪除請求，recipe_id: {recipe_id}")
     try:
         if delete_favorite_from_db(db, recipe_id):
+            print("食譜成功刪除")
             return jsonify({'message': '食譜已成功刪除！'}), 200
         else:
+            print("刪除失敗，找不到對應的食譜")
             return jsonify({'error': '刪除失敗，找不到對應的食譜。'}), 404
     except Exception as e:
+        print(f"刪除過程中發生錯誤: {str(e)}")
         return jsonify({'error': f'發生錯誤：{str(e)}'}), 500
 
 
