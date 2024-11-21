@@ -354,8 +354,26 @@ def handle_message(event):
 @app.route('/favorites')
 def favorites_page():
     return render_template('favorites.html')
-        
 
+@app.route('/api/favorites', methods=['GET'])
+def get_user_favorites_api():
+    try:
+        # 獲取當前用戶 ID (可根據實際情況使用 LINE ID 或其他登入系統的用戶標識)
+        user_id = request.args.get('user_id')  # 前端需要傳遞 user_id 作為參數
+        if not user_id:
+            return jsonify({'error': 'User ID is required'}), 400
+
+        # 從 Firestore 獲取用戶收藏的食譜
+        favorites = get_user_favorites(db, user_id)
+
+        if favorites is not None:
+            return jsonify(favorites), 200
+        else:
+            return jsonify({'error': 'Failed to retrieve favorites'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+        
 # 使用 `save_recipe_to_db`
 def handle_save_recipe(user_id, dish_name, recipe_text, ingredient_text):
     recipe_id = save_recipe_to_db(db, user_id, dish_name, recipe_text, ingredient_text)
