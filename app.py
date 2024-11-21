@@ -402,7 +402,7 @@ def delete_recipe(recipe_id):
 
 
     # 直接返回收藏頁面
-    favorites = get_user_favorites(db, user_id="your_user_id")  # 替換成實際的 user_id
+    favorites = get_user_favorites(db, user_id)  # 替換成實際的 user_id
     return render_template('favorites.html', favorites=favorites, message=message)
 
 
