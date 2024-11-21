@@ -185,6 +185,7 @@
                 fetch(`/api/favorites?user_id=${encodeURIComponent(userId)}`)
                     .then(response => response.json())
                     .then(data => {
+                        console.log("收藏的食譜數據:", data); // 調試：打印後端返回的數據
                         allRecipes = data; // 儲存所有食譜以便搜尋使用
                         displayRecipes(allRecipes);
                     })
