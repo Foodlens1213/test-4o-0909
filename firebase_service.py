@@ -22,13 +22,14 @@ def initialize_firebase():
 def save_recipe_to_db(db, user_id, dish_name, recipe_text, ingredient_text):
     try:
         doc_ref = db.collection('recipes').document()
-        doc_ref.set({
+        recipe_data = {
             'user_id': user_id,
             'dish': dish_name,
             'ingredient': ingredient_text,
             'recipe': recipe_text
-        })
-        return doc_ref.id
+        }
+        doc_ref.set(recipe_data)
+        return {'id': doc_ref.id, **recipe_data}  # 返回完整數據
     except Exception as e:
         print(f"Firestore 插入錯誤: {e}")
         return None
