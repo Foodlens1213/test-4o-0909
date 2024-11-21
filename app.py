@@ -7,7 +7,7 @@ import os
 from google.cloud import vision
 from dotenv import load_dotenv
 import io
-from firebase_service import initialize_firebase, save_recipe_to_db, get_recipe_from_db, get_user_favorites
+from firebase_service import initialize_firebase, save_recipe_to_db, get_recipe_from_db, get_user_favorites, delete_favorite_from_db
 
 # 載入環境變數
 load_dotenv()
@@ -389,6 +389,19 @@ def handle_get_recipe(recipe_id):
         print(f"查詢成功: {recipe}")
     else:
         print("查詢食譜失敗")
+        
+@app.route('/api/favorites/<recipe_id>', methods=['DELETE'])
+def delete_favorite(recipe_id):
+    """
+    刪除收藏的食譜
+    """
+    try:
+        if delete_favorite_from_db(db, recipe_id):  # 調用刪除函數
+            return jsonify({'message': '食譜已成功刪除'}), 200
+        else:
+            return jsonify({'error': '刪除過程中發生錯誤'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 # 顯示特定食譜的詳細內容 (供 "查看更多" 使用)
