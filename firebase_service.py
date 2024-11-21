@@ -63,7 +63,8 @@ def delete_favorite_from_db(db, recipe_id):
         # 獲取指定的文檔
         doc_ref = db.collection('recipes').document(recipe_id)
         if doc_ref.get().exists:
-            doc_ref.delete()  # 刪除文檔
+            favorites_ref = db.collection('favorites').where('recipe_id', '==', recipe_id)
+            favorites_ref.document(doc.id).delete()
             return True
         else:
             print("找不到對應的食譜文檔")
