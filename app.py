@@ -350,16 +350,10 @@ def handle_message(event):
             TextSendMessage(text="請告訴我您想要做什麼料理及道數。")
         )
         
-@app.route('/api/favorites', methods=['GET'])
-def favorites():
-    user_id = request.args.get('user_id')
-    if not user_id:
-        return "用戶 ID 缺失，無法顯示我的最愛", 400
-    try:
-        favorites = get_user_favorites(db, user_id)
-        return render_template('favorites.html', favorites=favorites)
-    except Exception as e:
-        return f"取得我的最愛時發生錯誤：{str(e)}", 500
+# 顯示收藏的食譜（前端頁面）
+@app.route('/favorites')
+def favorites_page():
+    return render_template('favorites.html')
         
 
 # 使用 `save_recipe_to_db`
