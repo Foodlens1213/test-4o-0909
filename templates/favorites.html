@@ -241,6 +241,31 @@
                 });
             }
         }
+        function deleteRecipe(recipeId) {
+            const confirmed = confirm("確定要刪除此食譜嗎？");
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/favorites/${recipeId}`, {
+                    method: "DELETE",
+                });
+
+                if (response.ok) {
+                    alert("食譜已成功刪除！");
+                    // 從畫面移除刪除的項目
+                    allRecipes = allRecipes.filter(recipe => recipe.recipe_id !== recipeId);
+                    displayRecipes(allRecipes); // 重新渲染畫面
+                } else {
+                    const errorData = await response.json();
+                    alert(`刪除失敗: ${errorData.error}`);
+                }
+            } catch (error) {
+                console.error("刪除過程中發生錯誤:", error);
+                alert("刪除過程中發生錯誤，請稍後再試。");
+            }
+        }
 
 
         // 搜尋食譜名稱的函數
