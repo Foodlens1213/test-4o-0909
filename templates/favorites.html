@@ -119,7 +119,6 @@
         }
 
         
-
         /* 模態框樣式 */
         .modal {
             display: none;
@@ -225,7 +224,9 @@
                             <p>${recipe.recipe.substring(0, 100)}...</p> <!-- 顯示前100字 -->
                             <div class="card-buttons">
                                 <button onclick="viewMore('${encodeURIComponent(recipe.dish)}','${encodeURIComponent(recipe.ingredient)}','${encodeURIComponent(recipe.recipe)}')">查看更多</button>
-                                <button onclick="deleteRecipe('${recipe.recipe_id}')"class="delete-button">刪除</button> <!-- 刪除按鈕 -->
+                                <form action="/delete_recipe/${recipe.recipe_id}" method="POST" onsubmit="return confirm('確定要刪除此食譜嗎？');" style="display:inline;">
+                                    <button type="submit" class="delete-button">刪除</button>
+                                </form>
                             </div>
                         </div>
                     `;
