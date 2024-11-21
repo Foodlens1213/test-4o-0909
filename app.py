@@ -32,11 +32,6 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 # 儲存處理後的食材資料（供後續使用）
 user_ingredients = {}
 
-# 顯示收藏的食譜（前端頁面）
-@app.route('/favorites')
-def favorites_page():
-    return render_template('favorites.html')
-
 def generate_recipe_response(user_message, ingredients):
     prompt = f"用戶希望做料理{user_message}，可用的食材有：{ingredients}。請使用 https://icook.tw/ 上的所有食譜，不要附上食譜連結，並按照以下格式生成一個適合的食譜：\n\n料理名稱: [料理名稱]\n食材: [食材列表，單行呈現]\n食譜內容: [分步驟列點，詳述步驟]"
 
@@ -363,6 +358,21 @@ def handle_save_recipe(user_id, dish_name, recipe_text, ingredient_text):
     else:
         print("儲存食譜時發生錯誤")
 
+@app.route('/api/favorites', methods=['GET'])
+def get_user_favorites():
+    user_id = request.args.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Missing user_id'}), 400
+
+    try:
+        # 查詢 favorites 集合，篩選符合 user_id 的食譜
+        favorites_ref = db.collection('favorites').where('user_id', '==', user_id)
+        docs = favorites_ref.stream()
+        favorites = [{'id': doc.id, **doc.to_dict()} for doc in docs]
+        return jsonify(favorites), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 # 使用 `get_recipe_from_db`
 def handle_get_recipe(recipe_id):
     recipe = get_recipe_from_db(db, recipe_id)
@@ -370,14 +380,6 @@ def handle_get_recipe(recipe_id):
         print(f"查詢成功: {recipe}")
     else:
         print("查詢食譜失敗")
-
-# 使用 `get_user_favorites`
-def handle_get_user_favorites(user_id):
-    favorites = get_user_favorites(db, user_id)
-    if favorites:
-        print(f"用戶收藏: {favorites}")
-    else:
-        print("查詢收藏失敗")
 
 # 顯示特定食譜的詳細內容 (供 "查看更多" 使用)
 @app.route('/api/favorites/<recipe_id>', methods=['GET'])
