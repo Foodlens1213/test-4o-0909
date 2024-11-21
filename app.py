@@ -358,7 +358,7 @@ def handle_save_recipe(user_id, dish_name, recipe_text, ingredient_text):
     else:
         print("儲存食譜時發生錯誤")
 
-@app.route('/api/favorites', methods=['GET'])
+@app.route('/favorites', methods=['GET'])
 def get_user_favorites():
     user_id = request.args.get('user_id')
     if not user_id:
