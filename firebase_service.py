@@ -57,7 +57,7 @@ def get_user_favorites(db, user_id):
         return None
         
 #從Firestore刪除指定的收藏食譜
-def delete_favorite_from_db(db,recipe_id)
+def delete_favorite_from_db(db,recipe_id):
     """
     刪除指定的收藏食譜
 
