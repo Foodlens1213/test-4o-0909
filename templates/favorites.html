@@ -221,7 +221,7 @@
                             <p>${recipe.recipe.substring(0, 100)}...</p> <!-- 顯示前100字 -->
                             <div class="card-buttons">
                                 <button onclick="viewMore('${encodeURIComponent(recipe.dish)}','${encodeURIComponent(recipe.ingredient)}','${encodeURIComponent(recipe.recipe)}')">查看更多</button>
-                                <button onclick="deleteRecipe('${recipe.user_id}')">刪除</button> <!-- 刪除按鈕 -->
+                                <button onclick="deleteRecipe('${recipe.recipe_id}')">刪除</button> <!-- 刪除按鈕 -->
                             </div>
                         </div>
                     `;
