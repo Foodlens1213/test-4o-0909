@@ -74,6 +74,14 @@ def generate_recipe_response(user_message, ingredients):
     print(f"解析出的食譜內容: {recipe_text}")
 
     return dish_name, ingredient_text, recipe_text
+    
+# 使用 `save_recipe_to_db`
+def handle_save_recipe(user_id, dish_name, recipe_text, ingredient_text):
+    recipe_id = save_recipe_to_db(db, user_id, dish_name, recipe_text, ingredient_text)
+    if recipe_id:
+        print(f"成功儲存食譜，ID: {recipe_id}")
+    else:
+        print("儲存食譜時發生錯誤")
 
 
 import re
@@ -375,14 +383,6 @@ def get_user_favorites_api():
         return jsonify({'error': str(e)}), 500
 
         
-# 使用 `save_recipe_to_db`
-def handle_save_recipe(user_id, dish_name, recipe_text, ingredient_text):
-    recipe_id = save_recipe_to_db(db, user_id, dish_name, recipe_text, ingredient_text)
-    if recipe_id:
-        print(f"成功儲存食譜，ID: {recipe_id}")
-    else:
-        print("儲存食譜時發生錯誤")
-
 # 使用 `get_recipe_from_db`
 def handle_get_recipe(recipe_id):
     recipe = get_recipe_from_db(db, recipe_id)
