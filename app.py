@@ -410,7 +410,7 @@ def delete_recipe(recipe_id):
 @app.route('/api/favorites/<recipe_id>', methods=['GET'])
 def get_recipe_detail(recipe_id):
     try:
-        recipe_doc = db.collection('recipes').document(recipe_id).get()
+        recipe_doc = db.collection('favorites').document(recipe_id).get()
         if recipe_doc.exists:
             return jsonify(recipe_doc.to_dict()), 200
         else:
