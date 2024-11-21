@@ -13,6 +13,9 @@ from firebase_service import initialize_firebase, save_recipe_to_db, get_recipe_
 load_dotenv()
 app = Flask(__name__)
 
+# 初始化 Firebase
+db = initialize_firebase()
+
 # 初始化 Google Cloud Vision API 客戶端
 google_credentials_content = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_CONTENT")
 if google_credentials_content:
@@ -346,9 +349,18 @@ def handle_message(event):
             event.reply_token,
             TextSendMessage(text="請告訴我您想要做什麼料理及道數。")
         )
-
-# 初始化 Firebase
-db = initialize_firebase()
+        
+@app.route('/favorites', methods=['GET'])
+def favorites():
+    user_id = request.args.get('user_id')
+    if not user_id:
+        return "用戶 ID 缺失，無法顯示我的最愛", 400
+    try:
+        favorites = get_user_favorites(db, user_id)
+        return render_template('favorites.html', favorites=favorites)
+    except Exception as e:
+        return f"取得我的最愛時發生錯誤：{str(e)}", 500
+        
 
 # 使用 `save_recipe_to_db`
 def handle_save_recipe(user_id, dish_name, recipe_text, ingredient_text):
@@ -365,6 +377,7 @@ def handle_get_recipe(recipe_id):
         print(f"查詢成功: {recipe}")
     else:
         print("查詢食譜失敗")
+
 
 # 顯示特定食譜的詳細內容 (供 "查看更多" 使用)
 @app.route('/api/favorites/<recipe_id>', methods=['GET'])
