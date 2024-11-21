@@ -7,27 +7,11 @@ import os
 from google.cloud import vision
 from dotenv import load_dotenv
 import io
-import firebase_admin
-from firebase_admin import credentials, firestore
-
+from firebase_service import initialize_firebase, save_recipe_to_db, get_recipe_from_db, get_user_favorites
 
 # 載入環境變數
 load_dotenv()
 app = Flask(__name__)
-
-# 初始化 Firebase Admin SDK 和 Firestore
-firebase_credentials_content = os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY")
-if firebase_credentials_content:
-    firebase_credentials_path = "/tmp/firebase-credentials.json"
-    with open(firebase_credentials_path, "w") as f:
-        f.write(firebase_credentials_content)
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = firebase_credentials_path
-
-    cred = credentials.Certificate(firebase_credentials_path)
-    firebase_admin.initialize_app(cred)
-    db = firestore.client()
-else:
-    print("Firebase 金鑰未正確設置，請檢查環境變數")
 
 # 初始化 Google Cloud Vision API 客戶端
 google_credentials_content = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_CONTENT")
@@ -48,55 +32,10 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 # 儲存處理後的食材資料（供後續使用）
 user_ingredients = {}
 
-# 儲存最愛食譜到 Firebase Firestore
-def save_recipe_to_db(user_id, dish_name, recipe_text, ingredient_text):
-    try:
-        # 手動生成一個新的 DocumentReference，這樣可以提前獲取 ID
-        doc_ref = db.collection('recipes').document()
-        doc_ref.set({
-            'user_id': user_id,
-            'dish': dish_name,
-            'ingredient': ingredient_text,
-            'recipe': recipe_text
-        })
-        return doc_ref.id  # 返回生成的文檔 ID
-    except Exception as e:
-        print(f"Firestore 插入錯誤: {e}")
-        return None
-
-# 從 Firebase Firestore 根據 recipe_id 查詢食譜
-def get_recipe_from_db(recipe_id):
-    try:
-        recipe_doc = db.collection('recipes').document(recipe_id).get()
-        if recipe_doc.exists:
-            return recipe_doc.to_dict()
-        else:
-            print("找不到對應的食譜")
-            return None
-    except Exception as e:
-        print(f"Firestore 查詢錯誤: {e}")
-        return None
-
 # 顯示收藏的食譜（前端頁面）
 @app.route('/favorites')
 def favorites_page():
     return render_template('favorites.html')
-
-# 從 Firestore 獲取用戶的收藏食譜 (API)
-@app.route('/api/favorites', methods=['GET'])
-def get_user_favorites():
-    user_id = request.args.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'Missing user_id'}), 400
-
-    try:
-        # 查詢 favorites 集合，篩選符合 user_id 的食譜
-        favorites_ref = db.collection('favorites').where('user_id', '==', user_id)
-        docs = favorites_ref.stream()
-        favorites = [{'id': doc.id, **doc.to_dict()} for doc in docs]
-        return jsonify(favorites), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
 def generate_recipe_response(user_message, ingredients):
     prompt = f"用戶希望做料理{user_message}，可用的食材有：{ingredients}。請使用 https://icook.tw/ 上的所有食譜，不要附上食譜連結，並按照以下格式生成一個適合的食譜：\n\n料理名稱: [料理名稱]\n食材: [食材列表，單行呈現]\n食譜內容: [分步驟列點，詳述步驟]"
@@ -413,6 +352,32 @@ def handle_message(event):
             TextSendMessage(text="請告訴我您想要做什麼料理及道數。")
         )
 
+# 初始化 Firebase
+db = initialize_firebase()
+
+# 使用 `save_recipe_to_db`
+def handle_save_recipe(user_id, dish_name, recipe_text, ingredient_text):
+    recipe_id = save_recipe_to_db(db, user_id, dish_name, recipe_text, ingredient_text)
+    if recipe_id:
+        print(f"成功儲存食譜，ID: {recipe_id}")
+    else:
+        print("儲存食譜時發生錯誤")
+
+# 使用 `get_recipe_from_db`
+def handle_get_recipe(recipe_id):
+    recipe = get_recipe_from_db(db, recipe_id)
+    if recipe:
+        print(f"查詢成功: {recipe}")
+    else:
+        print("查詢食譜失敗")
+
+# 使用 `get_user_favorites`
+def handle_get_user_favorites(user_id):
+    favorites = get_user_favorites(db, user_id)
+    if favorites:
+        print(f"用戶收藏: {favorites}")
+    else:
+        print("查詢收藏失敗")
 
 # 顯示特定食譜的詳細內容 (供 "查看更多" 使用)
 @app.route('/api/favorites/<recipe_id>', methods=['GET'])
