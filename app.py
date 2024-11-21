@@ -394,11 +394,12 @@ def handle_get_recipe(recipe_id):
 def delete_recipe(recipe_id):
     try:
         if delete_favorite_from_db(db, recipe_id):
-            message = "食譜已成功刪除！"
+            return jsonify({'message': '食譜已成功刪除！'}), 200
         else:
-            message = "刪除失敗！"
+            return jsonify({'error': '刪除失敗，找不到對應的食譜。'}), 404
     except Exception as e:
-        message = f"發生錯誤：{str(e)}"
+        return jsonify({'error': f'發生錯誤：{str(e)}'}), 500
+
 
     # 直接返回收藏頁面
     favorites = get_user_favorites(db, user_id="your_user_id")  # 替換成實際的 user_id
