@@ -394,15 +394,15 @@ def handle_get_recipe(recipe_id):
 def delete_recipe(recipe_id):
     try:
         if delete_favorite_from_db(db, recipe_id):
-            # 成功刪除，返回收藏頁面
-            flash('食譜已成功刪除！', 'success')
-            return redirect(url_for('favorites_page'))  # 重定向到收藏頁面
+            message = "食譜已成功刪除！"
         else:
-            flash('刪除失敗！', 'error')
-            return redirect(url_for('favorites_page'))
+            message = "刪除失敗！"
     except Exception as e:
-        flash(f'發生錯誤：{str(e)}', 'error')
-        return redirect(url_for('favorites_page'))
+        message = f"發生錯誤：{str(e)}"
+
+    # 直接返回收藏頁面
+    favorites = get_user_favorites(db, user_id="your_user_id")  # 替換成實際的 user_id
+    return render_template('favorites.html', favorites=favorites, message=message)
 
 
 # 顯示特定食譜的詳細內容 (供 "查看更多" 使用)
