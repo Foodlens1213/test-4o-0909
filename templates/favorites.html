@@ -105,6 +105,18 @@
             cursor: pointer;
             font-size: 14px;
         }
+        .delete-button {
+            background-color: red;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .delete-button:hover {
+            background-color: darkred;
+        }
 
         
 
@@ -143,14 +155,6 @@
         .close:focus {
             color: black;
             text-decoration: none;
-        }
-        .delete-button {
-            background-color: red; /* 紅色背景 */
-            color: white; /* 白色文字 */
-            border: none; /* 無邊框 */
-            padding: 8px 12px; /* 內邊距 */
-            border-radius: 4px; /* 圓角 */
-            cursor: pointer; /* 滑鼠移上去變成點擊手勢 */
         }
     </style>
 </head>
@@ -221,7 +225,7 @@
                             <p>${recipe.recipe.substring(0, 100)}...</p> <!-- 顯示前100字 -->
                             <div class="card-buttons">
                                 <button onclick="viewMore('${encodeURIComponent(recipe.dish)}','${encodeURIComponent(recipe.ingredient)}','${encodeURIComponent(recipe.recipe)}')">查看更多</button>
-                                <button onclick="deleteRecipe('${recipe.recipe_id}')">刪除</button> <!-- 刪除按鈕 -->
+                                <button onclick="deleteRecipe('${recipe.recipe_id}')"class="delete-button">刪除</button> <!-- 刪除按鈕 -->
                             </div>
                         </div>
                     `;
