@@ -56,21 +56,36 @@ def get_user_favorites(db, user_id):
         print(f"Firestore 查詢錯誤: {e}")
         return None
         
-#從Firestore刪除指定的收藏食譜
+# 從 Firestore 刪除指定的收藏食譜
 def delete_favorite_from_db(db, recipe_id):
     try:
         print(f"嘗試刪除的食譜 ID: {recipe_id}")
-        # 獲取指定的文檔
+        
+        # 檢查 recipes 集合中是否存在指定的 recipe_id
         doc_ref = db.collection('recipes').document(recipe_id)
         if doc_ref.get().exists:
-            favorites_ref = db.collection('favorites').where('recipe_id', '==', recipe_id)
-            favorites_ref.document(doc.id).delete()
-            return True
+            print("找到對應的食譜文檔，繼續查詢 favorites 集合...")
+            
+            # 查詢 favorites 集合中 recipe_id 相符的文檔
+            favorites_ref = db.collection('favorites').where('recipe_id', '==', recipe_id).stream()
+            deleted = False
+            for favorite in favorites_ref:
+                # 刪除 favorites 集合中的文檔
+                db.collection('favorites').document(favorite.id).delete()
+                print(f"已刪除 favorites 集合中的文檔: {favorite.id}")
+                deleted = True
+            
+            if deleted:
+                return True
+            else:
+                print("未找到與該 recipe_id 相符的收藏文檔")
+                return False
         else:
             print("找不到對應的食譜文檔")
             return False
     except Exception as e:
         print(f"刪除文檔時發生錯誤: {e}")
         return False
+
 
    
