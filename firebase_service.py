@@ -59,6 +59,7 @@ def get_user_favorites(db, user_id):
 #從Firestore刪除指定的收藏食譜
 def delete_favorite_from_db(db, recipe_id):
     try:
+        print(f"嘗試刪除的食譜 ID: {recipe_id}")
         # 獲取指定的文檔
         doc_ref = db.collection('favorites').document(recipe_id)
         if doc_ref.get().exists:
