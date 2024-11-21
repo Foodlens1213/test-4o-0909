@@ -67,7 +67,8 @@ def delete_favorite_from_db(db, recipe_id):
     try:
         # 查詢文檔是否存在
         favorite_ref = db.collection('favorites').document(recipe_id)
-        if favorite_ref.get().exists:
+        doc = favorite_ref.get()
+        if doc.exists:
             favorite_ref.delete()
             print(f"成功刪除食譜: {recipe_id}")
             return True
