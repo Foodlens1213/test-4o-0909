@@ -391,7 +391,7 @@ def handle_get_recipe(recipe_id):
     else:
         print("查詢食譜失敗")
         
-@app.route('/delete_recipe/<recipe_id>', methods=['POST'])
+@app.route('/api/favorites/<recipe_id>', methods=['POST'])
 def delete_recipe(recipe_id):
     try:
         if delete_favorite_from_db(db, recipe_id):
