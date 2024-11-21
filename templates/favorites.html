@@ -162,6 +162,13 @@
     <div class="user-info" id="userName"></div>
 
     <h1>我的最愛食譜</h1>
+    
+    <!-- 顯示成功或錯誤訊息 -->
+    {% if message %}
+        <p style="color: {{ 'green' if message == '食譜已成功刪除！' else 'red' }}; text-align: center;">
+            {{ message }}
+        </p>
+    {% endif %}
 
     <!-- 搜尋框 -->
     <div class="search-bar">
