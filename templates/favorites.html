@@ -241,7 +241,7 @@
                 });
             }
         }
-        function deleteRecipe(recipeId) {
+        async function deleteRecipe(recipeId) {
             const confirmed = confirm("確定要刪除此食譜嗎？");
             if (!confirmed) {
                 return;
