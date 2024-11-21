@@ -36,7 +36,7 @@ def save_recipe_to_db(db, user_id, dish_name, recipe_text, ingredient_text):
 # 從 Firestore 根據 recipe_id 查詢食譜
 def get_recipe_from_db(db, recipe_id):
     try:
-        recipe_doc = db.collection('favorites').document(recipe_id).get()
+        recipe_doc = db.collection('recipes').document(recipe_id).get()
         if recipe_doc.exists:
             return recipe_doc.to_dict()
         else:
