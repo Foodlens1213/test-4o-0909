@@ -350,7 +350,7 @@ def handle_message(event):
             TextSendMessage(text="請告訴我您想要做什麼料理及道數。")
         )
         
-@app.route('/favorites', methods=['GET'])
+@app.route('/api/favorites', methods=['GET'])
 def favorites():
     user_id = request.args.get('user_id')
     if not user_id:
