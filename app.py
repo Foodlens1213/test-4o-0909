@@ -250,7 +250,7 @@ def handle_postback(event):
     elif action == 'save_favorite':
         recipe_id = params.get('recipe_id')    
         user_id = user_id or event.source.user_id  # 確保 user_id 不為 null
-        recipe = get_recipe_from_db(recipe_id)
+        recipe = get_recipe_from_db(db, recipe_id)
 
         if recipe:
             # 將該食譜儲存在 favorites 集合中
