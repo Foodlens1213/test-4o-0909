@@ -32,8 +32,66 @@ handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 # OpenAI API 金鑰
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+# 處理圖片訊息，進行 Google Cloud Vision 的物體偵測（Label Detection）
+@handler.add(MessageEvent, message=ImageMessage)
+def handle_image_message(event):
+    message_id = event.message.id
+    message_content = line_bot_api.get_message_content(message_id)
+
+    image_data = io.BytesIO(message_content.content)
+    image = vision.Image(content=image_data.read())
+
+    try:
+        response = vision_client.label_detection(image=image)
+        labels = response.label_annotations
+
+        if labels:
+            detected_labels = [label.description for label in labels]
+            print(f"辨識到的食材: {detected_labels}")  # 在 log 中顯示食材
+            processed_text = translate_and_filter_ingredients(detected_labels)
+            user_id = event.source.user_id
+            if processed_text:
+                user_ingredients[user_id] = processed_text
+                question_response = ask_user_for_recipe_info()
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text=question_response)
+                )
+            else:
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text="未能識別出任何食材，請嘗試上傳另一張清晰的圖片。")
+                )
+        else:
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="無法辨識出任何物體，請確保圖片中的食材明顯可見。")
+            )
+    except Exception as e:
+        print(f"Google Vision API 錯誤: {str(e)}")
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=f"圖片辨識過程中發生錯誤: {str(e)}")
+        )
 # 儲存處理後的食材資料（供後續使用）
 user_ingredients = {}
+
+# ChatGPT 翻譯並過濾非食材詞彙
+def translate_and_filter_ingredients(detected_labels):
+    prompt = f"以下是從圖片中辨識出的物體列表：\n{', '.join(detected_labels)}\n請將其翻譯成繁體中文，並只保留與食材相關的詞彙，去除非食材的詞彙。"
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "你是一個專業的翻譯助手，並且能過濾出與食材相關的內容。"},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    processed_text = response.choices[0].message['content'].strip()
+    return processed_text
+
+# 問使用者料理需求
+def ask_user_for_recipe_info():
+    return "您今天想做甚麼樣的料理？幾道菜？"
 
 def generate_recipe_response(user_message, ingredients):
     prompt = f"用戶希望做料理{user_message}，可用的食材有：{ingredients}。請使用 https://icook.tw/ 上的所有食譜，不要附上食譜連結，並按照以下格式生成一個適合的食譜：\n\n料理名稱: [料理名稱]\n食材: [食材列表，單行呈現]\n食譜內容: [分步驟列點，詳述步驟]"
@@ -45,7 +103,7 @@ def generate_recipe_response(user_message, ingredients):
             {"role": "system", "content":f"你是一位專業的廚師，會根據用戶的需求生成食譜。"},
             {"role": "user", "content": prompt}
         ],
-        max_tokens=750
+        max_tokens=800
     )
     recipe = response.choices[0].message['content'].strip()
     print(f"ChatGPT 返回的內容: {recipe}")  # 除錯：打印原始回應以進行檢查
@@ -75,15 +133,6 @@ def generate_recipe_response(user_message, ingredients):
 
     return dish_name, ingredient_text, recipe_text
     
-# 使用 `save_recipe_to_db`
-def handle_save_recipe(user_id, dish_name, recipe_text, ingredient_text):
-    recipe_id = save_recipe_to_db(db, user_id, dish_name, recipe_text, ingredient_text)
-    if recipe_id:
-        print(f"成功儲存食譜，ID: {recipe_id}")
-    else:
-        print("儲存食譜時發生錯誤")
-
-
 import re
 def clean_text(text):
     # 去除無效字符和表情符號
@@ -170,64 +219,6 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingred
     }
     return bubble
     
-# 處理圖片訊息，進行 Google Cloud Vision 的物體偵測（Label Detection）
-@handler.add(MessageEvent, message=ImageMessage)
-def handle_image_message(event):
-    message_id = event.message.id
-    message_content = line_bot_api.get_message_content(message_id)
-
-    image_data = io.BytesIO(message_content.content)
-    image = vision.Image(content=image_data.read())
-
-    try:
-        response = vision_client.label_detection(image=image)
-        labels = response.label_annotations
-
-        if labels:
-            detected_labels = [label.description for label in labels]
-            print(f"辨識到的食材: {detected_labels}")  # 在 log 中顯示食材
-            processed_text = translate_and_filter_ingredients(detected_labels)
-            user_id = event.source.user_id
-            if processed_text:
-                user_ingredients[user_id] = processed_text
-                question_response = ask_user_for_recipe_info()
-                line_bot_api.reply_message(
-                    event.reply_token,
-                    TextSendMessage(text=question_response)
-                )
-            else:
-                line_bot_api.reply_message(
-                    event.reply_token,
-                    TextSendMessage(text="未能識別出任何食材，請嘗試上傳另一張清晰的圖片。")
-                )
-        else:
-            line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(text="無法辨識出任何物體，請確保圖片中的食材明顯可見。")
-            )
-    except Exception as e:
-        print(f"Google Vision API 錯誤: {str(e)}")
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text=f"圖片辨識過程中發生錯誤: {str(e)}")
-        )
-
-# ChatGPT 翻譯並過濾非食材詞彙
-def translate_and_filter_ingredients(detected_labels):
-    prompt = f"以下是從圖片中辨識出的物體列表：\n{', '.join(detected_labels)}\n請將其翻譯成繁體中文，並只保留與食材相關的詞彙，去除非食材的詞彙。"
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": "你是一個專業的翻譯助手，並且能過濾出與食材相關的內容。"},
-            {"role": "user", "content": prompt}
-        ]
-    )
-    processed_text = response.choices[0].message['content'].strip()
-    return processed_text
-
-# 問使用者料理需求
-def ask_user_for_recipe_info():
-    return "您今天想做甚麼樣的料理？幾道菜？"
 
 # 處理使用者需求
 @handler.add(PostbackEvent)
