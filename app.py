@@ -358,21 +358,6 @@ def handle_save_recipe(user_id, dish_name, recipe_text, ingredient_text):
     else:
         print("儲存食譜時發生錯誤")
 
-@app.route('/api/favorites/<user_id>', methods=['GET'])
-def get_user_favorites():
-    user_id = request.args.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'Missing user_id'}), 400
-
-    try:
-        # 查詢 favorites 集合，篩選符合 user_id 的食譜
-        favorites_ref = db.collection('favorites').where('user_id', '==', user_id)
-        docs = favorites_ref.stream()
-        favorites = [{'id': doc.id, **doc.to_dict()} for doc in docs]
-        return jsonify(favorites), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 # 使用 `get_recipe_from_db`
 def handle_get_recipe(recipe_id):
     recipe = get_recipe_from_db(db, recipe_id)
