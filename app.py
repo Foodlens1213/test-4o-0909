@@ -258,7 +258,7 @@ def handle_postback(event):
                     'dish': recipe['dish'],
                     'ingredient': recipe['ingredient'],
                     'recipe': recipe['recipe'],
-                    'recipe_id': recipe_id  # 用於識別原始食譜
+                    'recipe_id': recipe['id']
                 })
                 line_bot_api.reply_message(
                     event.reply_token,
