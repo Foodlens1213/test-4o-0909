@@ -390,18 +390,19 @@ def handle_get_recipe(recipe_id):
     else:
         print("查詢食譜失敗")
         
-@app.route('/api/favorites/<recipe_id>', methods=['DELETE'])
-def delete_favorite(recipe_id):
-    """
-    刪除收藏的食譜
-    """
+@app.route('/delete_recipe/<recipe_id>', methods=['POST'])
+def delete_recipe(recipe_id):
     try:
-        if delete_favorite_from_db(db, recipe_id):  # 調用刪除函數
-            return jsonify({'message': '食譜已成功刪除'}), 200
+        if delete_favorite_from_db(db, recipe_id):
+            # 成功刪除，返回收藏頁面
+            flash('食譜已成功刪除！', 'success')
+            return redirect(url_for('favorites_page'))  # 重定向到收藏頁面
         else:
-            return jsonify({'error': '刪除過程中發生錯誤'}), 500
+            flash('刪除失敗！', 'error')
+            return redirect(url_for('favorites_page'))
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        flash(f'發生錯誤：{str(e)}', 'error')
+        return redirect(url_for('favorites_page'))
 
 
 # 顯示特定食譜的詳細內容 (供 "查看更多" 使用)
