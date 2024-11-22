@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 from firebase_service import initialize_firebase, save_recipe_to_db, get_recipe_from_db, get_user_favorites, delete_favorite_from_db
 from google_vision_service import detect_labels
 from chatgpt_service import translate_and_filter_ingredients, generate_recipe_response
-import re
 
 # 載入環境變數
 load_dotenv()
@@ -21,74 +20,58 @@ db = initialize_firebase()
 line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 
+# 處理圖片訊息，進行 Google Cloud Vision 的物體偵測（Label Detection）
+@handler.add(MessageEvent, message=ImageMessage)
+def handle_image_message(event):
+    message_id = event.message.id
+    message_content = line_bot_api.get_message_content(message_id)
+
+    # 讀取圖片內容
+    image_data = io.BytesIO(message_content.content)
+
+    # 使用封裝的 detect_labels 方法
+    detected_labels = detect_labels(image_data.read())
+
+    if detected_labels:
+        print(f"辨識到的食材: {detected_labels}")  # 在 log 中顯示食材
+        processed_text = translate_and_filter_ingredients(detected_labels)
+        user_id = event.source.user_id
+        if processed_text:
+            user_ingredients[user_id] = processed_text
+            question_response = ask_user_for_recipe_info()
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text=question_response)
+            )
+        else:
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="未能識別出任何食材，請嘗試上傳另一張清晰的圖片。")
+            )
+    else:
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text="無法辨識出任何物體，請確保圖片中的食材明顯可見。")
+        )
+
 # 儲存處理後的食材資料（供後續使用）
 user_ingredients = {}
-
-
-# 錯誤處理函數
-def handle_error(event, message="發生錯誤，請稍後再試"):
-    print(f"錯誤詳情: {message}")
-    line_bot_api.reply_message(
-        event.reply_token,
-        TextSendMessage(text=message)
-    )
-
-
-# 提取料理類型和菜數
-def parse_user_message(user_message):
-    match = re.search(r"做(.*?)(?:幾|道)?", user_message)
-    dish_type = match.group(1).strip() if match else "料理"
-
-    dish_count = None
-    if re.search(r"\d+", user_message):
-        dish_count = int(re.search(r"\d+", user_message).group())
-    else:
-        dish_count = chinese_to_digit(user_message)
-
-    return dish_type, dish_count if dish_count else 1
-
-
-# 將中文數字轉換為阿拉伯數字
-def chinese_to_digit(user_message):
-    chinese_digits = {'零': 0, '一': 1, '二': 2, '兩': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9}
-    match = re.search(r"[零一二兩三四五六七八九]", user_message)
-    return chinese_digits[match.group()] if match else None
-
 
 # 問使用者料理需求
 def ask_user_for_recipe_info():
     return "您今天想做甚麼樣的料理？幾道菜？"
 
-
-# 生成多道食譜
-def generate_multiple_recipes(dish_count, dish_type, ingredients):
-    recipes = []
-    existing_dishes = set()
-    
-    for i in range(dish_count):
-        while True:
-            specific_message = f"第 {i + 1} 道 {dish_type} 料理"
-            dish_name, ingredient_text, recipe_text = generate_recipe_response(specific_message,ingredients)
-            if dish_name not in existing_dishes:
-                recipes.append((dish_name, ingredient_text, recipe_text))
-                existing_dishes.add(dish_name)
-                break
-            else:
-                print("生成的食譜重複，重新生成...")
-
-    return recipes
-    
+import re
 def clean_text(text):
     # 去除無效字符和表情符號
     return re.sub(r'[^\w\s,.!?]', '', text)
-
-# 創建 Flex Message
 def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, recipe_number):
     recipe_id = save_recipe_to_db(db, user_id, dish_name, recipe_text, ingredient_text)
     if isinstance(ingredients, list):
         ingredients_str = ','.join(ingredients)
     else:
         ingredients_str = str(ingredients)
+    # 設置 Flex Message 結構
     bubble = {
         "type": "bubble",
         "body": {
@@ -114,70 +97,20 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingred
         }
     }
     return bubble
-
-# 處理圖片訊息
-@handler.add(MessageEvent, message=ImageMessage)
-def handle_image_message(event):
-    try:
-        message_id = event.message.id
-        message_content = line_bot_api.get_message_content(message_id)
-        image_data = io.BytesIO(message_content.content)
-        detected_labels = detect_labels(image_data.read())
-
-        if detected_labels:
-            processed_text = translate_and_filter_ingredients(detected_labels)
-            user_id = event.source.user_id
-            if processed_text:
-                user_ingredients[user_id] = processed_text
-                question_response = ask_user_for_recipe_info()
-                line_bot_api.reply_message(event.reply_token, TextSendMessage(text=question_response))
-            else:
-                line_bot_api.reply_message(event.reply_token, TextSendMessage(text="未能識別出任何食材。"))
-        else:
-            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="無法辨識出任何物體。"))
-    except Exception as e:
-        handle_error(event, str(e))
-
-
-# 處理使用者訊息
-@handler.add(MessageEvent, message=TextMessage)
-def handle_message(event):
-    try:
-        user_id = event.source.user_id
-        user_message = event.message.text
-        dish_type, dish_count = parse_user_message(user_message)
-        ingredients = user_ingredients.get(user_id,None)
-
-        if ingredients:
-            # 立即回應確認訊息
-
-            recipes = generate_multiple_recipes(dish_count, dish_type, ingredients)
-            flex_bubbles = [
-                create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, i + 1)
-                for i, (dish_name, ingredient_text, recipe_text) in enumerate(recipes)
-            ]
-            carousel = {"type": "carousel", "contents": flex_bubbles}
-            line_bot_api.push_message(user_id, FlexSendMessage(alt_text="您的多道食譜", contents=carousel))
-        else:
-            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="請告訴我您想要做什麼料理及道數。"))
-    except Exception as e:
-        handle_error(event, str(e))
-
-
-# 處理 Postback 事件
+    
+# 處理使用者需求
 @handler.add(PostbackEvent)
 def handle_postback(event):
     data = event.postback.data
     params = dict(x.split('=') for x in data.split('&'))
     action = params.get('action')
     user_id = params.get('user_id')
-    
     # 修改 handle_postback 函數中的 `new_recipe` 行動回應
     if action == 'new_recipe':
         # 回覆"沒問題，請稍後~"
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text="沒問題，生成食譜中，請稍後~")
+            TextSendMessage(text="沒問題，請稍後~")
         )
         ingredients = params.get('ingredients')
         dish_name, ingredient_text, recipe_text = generate_recipe_response("新的食譜", ingredients)
@@ -220,8 +153,62 @@ def handle_postback(event):
                 event.reply_token,
                 TextSendMessage(text="找不到該食譜，無法加入我的最愛")
             )
+def generate_multiple_recipes(dish_count, dish_type, ingredients):
+    recipes = []
+    existing_dishes = set()  # 用於追踪生成的菜名，避免重複
 
+    for _ in range(dish_count):
+        while True:
+            # 生成食譜
+            dish_name, ingredient_text, recipe_text = generate_recipe_response(dish_type, 1, ingredients)
 
+            # 如果食譜不重複，則加入清單並跳出迴圈
+            if dish_name not in existing_dishes:
+                recipes.append((dish_name, ingredient_text, recipe_text))
+                existing_dishes.add(dish_name)
+                break
+            else:
+                print("生成的食譜重複，重新生成...")
+    return recipes
+
+# 將中文數字轉換為阿拉伯數字的函數
+def chinese_to_digit(user_message):
+    chinese_digits = {'零': 0, '一': 1, '二': 2, '兩': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9}
+    chinese_num = re.search(r"[零一二兩三四五六七八九]", user_message)
+    if chinese_num:
+        return chinese_digits[chinese_num.group()]
+    return None
+
+# 更新 handle_message 函數
+@handler.add(MessageEvent, message=TextMessage)
+def handle_message(event):
+    user_id = event.source.user_id
+    user_message = event.message.text
+    # 解析使用者訊息
+    dish_type, dish_count = parse_user_message(user_message)
+    ingredients = user_ingredients.get(user_id, None)
+    if ingredients:
+        # 生成多道食譜
+        recipes = generate_multiple_recipes(dish_count, dish_type, ingredients)
+        # 回覆多頁式的食譜 Flex Message
+        flex_bubbles = [
+            create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, i + 1)
+            for i, (dish_name, ingredient_text, recipe_text) in enumerate(recipes)
+        ]
+        carousel = {
+            "type": "carousel",
+            "contents": flex_bubbles
+        }
+        line_bot_api.reply_message(
+            event.reply_token, 
+            FlexSendMessage(alt_text="您的多道食譜", contents=carousel)
+        )
+    else:
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text="請先上傳圖片來辨識食材。")
+        )
+        
 # 顯示收藏的食譜（前端頁面）
 @app.route('/favorites')
 def favorites_page():
@@ -297,13 +284,10 @@ def callback():
         print(f"發生錯誤: {str(e)}")
         abort(500)
     return "OK"
-
-
-# 健康檢查
+# 健康檢查路由
 @app.route("/health", methods=["GET"])
 def health_check():
     return "OK", 200
-
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
