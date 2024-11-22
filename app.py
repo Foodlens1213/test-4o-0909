@@ -126,6 +126,7 @@ def handle_postback(event):
             TextSendMessage(text="沒問題，請稍後~")
         )
         ingredients = params.get('ingredients')
+        ingredients = ingredients_str.split(',') if ingredients_str else []
         dish_name, ingredient_text, recipe_text = generate_recipe_response("新的食譜", ingredients)
         if dish_name and recipe_text:
             flex_message = FlexSendMessage(
