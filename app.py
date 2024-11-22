@@ -200,6 +200,83 @@ def handle_postback(event):
         handle_error(event, str(e))
 
 
+# 顯示收藏的食譜（前端頁面）
+@app.route('/favorites')
+def favorites_page():
+    return render_template('favorites.html')
+@app.route('/api/favorites', methods=['GET'])
+def get_user_favorites_api():
+    try:
+        # 獲取當前用戶 ID (可根據實際情況使用 LINE ID 或其他登入系統的用戶標識)
+        user_id = request.args.get('user_id')  # 前端需要傳遞 user_id 作為參數
+        if not user_id:
+            return jsonify({'error': 'User ID is required'}), 400
+        # 從 Firestore 獲取用戶收藏的食譜
+        favorites = get_user_favorites(db, user_id)
+        if favorites is not None:
+            return jsonify(favorites), 200
+        else:
+            return jsonify({'error': 'Failed to retrieve favorites'}), 500
+    except Exception as e:
+        print(f"API 錯誤: {e}")  # 打印詳細日誌
+        return jsonify({'error': str(e)}), 500
+        
+# 使用 `get_recipe_from_db`
+def handle_get_recipe(recipe_id):
+    recipe = get_recipe_from_db(db, recipe_id)
+    if recipe:
+        print(f"查詢成功: {recipe}")
+    else:
+        print("查詢食譜失敗")
+        
+@app.route('/api/favorites/<recipe_id>', methods=['DELETE'])
+def delete_recipe(recipe_id):
+    print(f"收到刪除請求，recipe_id: {recipe_id}")
+    try:
+        if delete_favorite_from_db(db, recipe_id):
+            print("食譜成功刪除")
+            return jsonify({'message': '食譜已成功刪除！'}), 200
+        else:
+            print("刪除失敗，找不到對應的食譜")
+            return jsonify({'error': '刪除失敗，找不到對應的食譜。'}), 404
+    except Exception as e:
+        print(f"刪除過程中發生錯誤: {str(e)}")
+        return jsonify({'error': f'發生錯誤：{str(e)}'}), 500
+    # 直接返回收藏頁面
+    favorites = get_user_favorites(db, user_id)  # 替換成實際的 user_id
+    return render_template('favorites.html', favorites=favorites, message=message)
+
+
+# 顯示特定食譜的詳細內容 (供 "查看更多" 使用)
+@app.route('/api/favorites/<recipe_id>', methods=['GET'])
+def get_recipe_detail(recipe_id):
+    try:
+        recipe_doc = db.collection('favorites').document(recipe_id).get()
+        if recipe_doc.exists:
+            return jsonify(recipe_doc.to_dict()), 200
+        else:
+            return jsonify({'error': 'Recipe not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# Webhook callback 處理 LINE 訊息
+@app.route("/callback", methods=["POST"])
+def callback():
+    body = request.get_data(as_text=True)
+    print(f"收到 Webhook 請求: Body: {body}")
+    try:
+        signature = request.headers["X-Line-Signature"]
+        handler.handle(body, signature)
+    except InvalidSignatureError:
+        print("無效的簽名錯誤!")
+        abort(400)
+    except Exception as e:
+        print(f"發生錯誤: {str(e)}")
+        abort(500)
+    return "OK"
+
+
 # 健康檢查
 @app.route("/health", methods=["GET"])
 def health_check():
