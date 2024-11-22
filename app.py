@@ -97,7 +97,20 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingred
         }
     }
     return bubble
-    
+
+# 提取料理類型和菜數
+def parse_user_message(user_message):
+    match = re.search(r"做(.*?)(?:幾|道)?", user_message)
+    dish_type = match.group(1).strip() if match else "料理"
+
+    dish_count = None
+    if re.search(r"\d+", user_message):
+        dish_count = int(re.search(r"\d+", user_message).group())
+    else:
+        dish_count = chinese_to_digit(user_message)
+
+    return dish_type, dish_count if dish_count else 1
+
 # 處理使用者需求
 @handler.add(PostbackEvent)
 def handle_postback(event):
