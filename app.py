@@ -150,10 +150,6 @@ def handle_message(event):
 
         if ingredients:
             # 立即回應確認訊息
-            line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(text="沒問題，生成食譜中，請稍後~")
-            )
 
             recipes = generate_multiple_recipes(dish_count, dish_type, ingredients)
             flex_bubbles = [
