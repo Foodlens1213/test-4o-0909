@@ -1,8 +1,11 @@
 import openai
 import re
+import os
+from dotenv import load_dotenv
 
 # 初始化 OpenAI API 金鑰
-openai.api_key = "YOUR_OPENAI_API_KEY"  # 或使用環境變數 os.getenv("OPENAI_API_KEY")
+load_dotenv()
+openai.api_key = os.getenv("OPENAI_API_KEY") # 使用環境變數 os.getenv("OPENAI_API_KEY")
 
 # 翻譯並過濾非食材詞彙
 def translate_and_filter_ingredients(detected_labels):
