@@ -2,12 +2,13 @@ from flask import Flask, request, abort, jsonify, render_template
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage, FlexSendMessage, PostbackEvent
-import openai
 import os
 import io
 from dotenv import load_dotenv
 from firebase_service import initialize_firebase, save_recipe_to_db, get_recipe_from_db, get_user_favorites, delete_favorite_from_db
 from google_vision_service import detect_labels
+from chatgpt_service import translate_and_filter_ingredients, generate_recipe_response
+
 # 載入環境變數
 load_dotenv()
 app = Flask(__name__)
@@ -18,9 +19,6 @@ db = initialize_firebase()
 # LINE Bot API 和 Webhook 設定
 line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
-
-# OpenAI API 金鑰
-openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # 處理圖片訊息，進行 Google Cloud Vision 的物體偵測（Label Detection）
 @handler.add(MessageEvent, message=ImageMessage)
@@ -59,63 +57,10 @@ def handle_image_message(event):
 # 儲存處理後的食材資料（供後續使用）
 user_ingredients = {}
 
-# ChatGPT 翻譯並過濾非食材詞彙
-def translate_and_filter_ingredients(detected_labels):
-    prompt = f"以下是從圖片中辨識出的物體列表：\n{', '.join(detected_labels)}\n請將其翻譯成繁體中文，並只保留與食材相關的詞彙，去除非食材的詞彙。"
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": "你是一個專業的翻譯助手，並且能過濾出與食材相關的內容。"},
-            {"role": "user", "content": prompt}
-        ]
-    )
-    processed_text = response.choices[0].message['content'].strip()
-    return processed_text
-
 # 問使用者料理需求
 def ask_user_for_recipe_info():
     return "您今天想做甚麼樣的料理？幾道菜？"
 
-def generate_recipe_response(user_message, ingredients):
-    prompt = f"用戶希望做料理{user_message}，可用的食材有：{ingredients}。請使用 https://icook.tw/ 上的所有食譜，不要附上食譜連結，並按照以下格式生成一個適合的食譜：\n\n料理名稱: [料理名稱]\n食材: [食材列表，單行呈現]\n食譜內容: [分步驟列點，詳述步驟]"
-
-    # 從 ChatGPT 獲取回應
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content":f"你是一位專業的廚師，會根據用戶的需求生成食譜。"},
-            {"role": "user", "content": prompt}
-        ],
-        max_tokens=800
-    )
-    recipe = response.choices[0].message['content'].strip()
-    print(f"ChatGPT 返回的內容: {recipe}")  # 除錯：打印原始回應以進行檢查
-
-    # 設定預設值，以防解析失敗
-    dish_name = "未命名料理"
-    ingredient_text = "未提供食材"
-    recipe_text = "未提供食譜內容"
-
-    # 使用更嚴格的正則表達式解析各部分
-    dish_name_match = re.search(r"(?:食譜名稱|名稱)[:：]\s*(.+)", recipe)
-    ingredient_text_match = re.search(r"(?:食材|材料)[:：]\s*(.+)", recipe)
-    recipe_text_match = re.search(r"(?:食譜內容|步驟)[:：]\s*((.|\n)+)", recipe)
-
-    # 如果匹配成功，則賦值
-    if dish_name_match:
-        dish_name = dish_name_match.group(1).strip()
-    if ingredient_text_match:
-        ingredient_text = ingredient_text_match.group(1).strip()
-    if recipe_text_match:
-        recipe_text = recipe_text_match.group(1).strip()
-
-    # 除錯：打印解析出的值
-    print(f"解析出的料理名稱: {dish_name}")
-    print(f"解析出的食材: {ingredient_text}")
-    print(f"解析出的食譜內容: {recipe_text}")
-
-    return dish_name, ingredient_text, recipe_text
-    
 import re
 def clean_text(text):
     # 去除無效字符和表情符號
@@ -218,15 +163,19 @@ def handle_postback(event):
             event.reply_token,
             TextSendMessage(text="沒問題，請稍後~")
         )
-        from linebot.models import FlexSendMessage
         ingredients = params.get('ingredients')
         dish_name, ingredient_text, recipe_text = generate_recipe_response("新的食譜", ingredients)
-        flex_message = FlexSendMessage(
-            alt_text="您的新食譜",
-            contents=create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, 1)
-        )
-        line_bot_api.push_message(user_id, flex_message)
-
+        if dish_name and recipe_text:
+            flex_message = FlexSendMessage(
+                alt_text="您的新食譜",
+                contents=create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, 1)
+            )
+            line_bot_api.push_message(user_id, flex_message)
+        else:
+            line_bot_api.push_message(
+                user_id,
+                TextSendMessage(text="生成食譜失敗，請稍後再試。")
+            )
     elif action == 'save_favorite':
         recipe_id = params.get('recipe_id')    
         user_id = user_id or event.source.user_id  # 確保 user_id 不為 null
