@@ -68,7 +68,7 @@ def generate_multiple_recipes(dish_count, dish_type, ingredients):
     for i in range(dish_count):
         while True:
             specific_message = f"第 {i + 1} 道 {dish_type} 料理"
-            dish_name, ingredient_text, recipe_text = generate_recipe_response(specific_message, 1, ingredients)
+            dish_name, ingredient_text, recipe_text = generate_recipe_response(specific_message,ingredients)
 
             if dish_name not in existing_dishes:
                 recipes.append((dish_name, ingredient_text, recipe_text))
