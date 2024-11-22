@@ -3,27 +3,15 @@ from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage, FlexSendMessage, PostbackEvent
 import openai
-import os
-from google.cloud import vision
 from dotenv import load_dotenv
-import io
 from firebase_service import initialize_firebase, save_recipe_to_db, get_recipe_from_db, get_user_favorites, delete_favorite_from_db
-
+from google_vision_service import detect_labels
 # 載入環境變數
 load_dotenv()
 app = Flask(__name__)
 
 # 初始化 Firebase
 db = initialize_firebase()
-
-# 初始化 Google Cloud Vision API 客戶端
-google_credentials_content = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_CONTENT")
-if google_credentials_content:
-    credentials_path = "/tmp/google-credentials.json"
-    with open(credentials_path, "w") as f:
-        f.write(google_credentials_content)
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
-vision_client = vision.ImageAnnotatorClient()
 
 # LINE Bot API 和 Webhook 設定
 line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
@@ -38,41 +26,34 @@ def handle_image_message(event):
     message_id = event.message.id
     message_content = line_bot_api.get_message_content(message_id)
 
+    # 讀取圖片內容
     image_data = io.BytesIO(message_content.content)
-    image = vision.Image(content=image_data.read())
 
-    try:
-        response = vision_client.label_detection(image=image)
-        labels = response.label_annotations
+    # 使用封裝的 detect_labels 方法
+    detected_labels = detect_labels(image_data.read())
 
-        if labels:
-            detected_labels = [label.description for label in labels]
-            print(f"辨識到的食材: {detected_labels}")  # 在 log 中顯示食材
-            processed_text = translate_and_filter_ingredients(detected_labels)
-            user_id = event.source.user_id
-            if processed_text:
-                user_ingredients[user_id] = processed_text
-                question_response = ask_user_for_recipe_info()
-                line_bot_api.reply_message(
-                    event.reply_token,
-                    TextSendMessage(text=question_response)
-                )
-            else:
-                line_bot_api.reply_message(
-                    event.reply_token,
-                    TextSendMessage(text="未能識別出任何食材，請嘗試上傳另一張清晰的圖片。")
-                )
+    if detected_labels:
+        print(f"辨識到的食材: {detected_labels}")  # 在 log 中顯示食材
+        processed_text = translate_and_filter_ingredients(detected_labels)
+        user_id = event.source.user_id
+        if processed_text:
+            user_ingredients[user_id] = processed_text
+            question_response = ask_user_for_recipe_info()
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text=question_response)
+            )
         else:
             line_bot_api.reply_message(
                 event.reply_token,
-                TextSendMessage(text="無法辨識出任何物體，請確保圖片中的食材明顯可見。")
+                TextSendMessage(text="未能識別出任何食材，請嘗試上傳另一張清晰的圖片。")
             )
-    except Exception as e:
-        print(f"Google Vision API 錯誤: {str(e)}")
+    else:
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text=f"圖片辨識過程中發生錯誤: {str(e)}")
+            TextSendMessage(text="無法辨識出任何物體，請確保圖片中的食材明顯可見。")
         )
+
 # 儲存處理後的食材資料（供後續使用）
 user_ingredients = {}
 
