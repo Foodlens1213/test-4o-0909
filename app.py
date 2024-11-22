@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 from firebase_service import initialize_firebase, save_recipe_to_db, get_recipe_from_db, get_user_favorites, delete_favorite_from_db
 from google_vision_service import detect_labels
 from chatgpt_service import translate_and_filter_ingredients, generate_recipe_response
-import json
 import re
 
 # 載入環境變數
@@ -171,9 +170,10 @@ def handle_message(event):
 @handler.add(PostbackEvent)
 def handle_postback(event):
     try:
-        data = json.loads(event.postback.data)
-        action = data.get('action')
-        user_id = data.get('user_id')
+        data = event.postback.data
+        params = dict(x.split('=') for x in data.split('&'))
+        action = params.get('action')
+        user_id = params.get('user_id')
 
         if action == 'new_recipe':
             ingredients = data.get('ingredients')
