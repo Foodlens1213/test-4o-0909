@@ -169,35 +169,58 @@ def handle_message(event):
 # 處理 Postback 事件
 @handler.add(PostbackEvent)
 def handle_postback(event):
-    try:
-        data = event.postback.data
-        params = dict(x.split('=') for x in data.split('&'))
-        action = params.get('action')
-        user_id = params.get('user_id')
-
-        if action == 'new_recipe':
-            ingredients = data.get('ingredients')
-            recipes = generate_multiple_recipes(1, "新的食譜", ingredients)
-            if recipes:
-                flex_message = FlexSendMessage(
-                    alt_text="您的新食譜",
-                    contents=create_flex_message(recipes[0][2], user_id, recipes[0][0], recipes[0][1], ingredients, 1)
-                )
-                line_bot_api.push_message(user_id, flex_message)
-        elif action == 'save_favorite':
-            recipe_id = data.get('recipe_id')
-            recipe = get_recipe_from_db(db, recipe_id)
-            if recipe:
+    data = event.postback.data
+    params = dict(x.split('=') for x in data.split('&'))
+    action = params.get('action')
+    user_id = params.get('user_id')
+    # 修改 handle_postback 函數中的 `new_recipe` 行動回應
+    if action == 'new_recipe':
+        # 回覆"沒問題，請稍後~"
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text="沒問題，生成食譜中，請稍後~")
+        )
+        ingredients = params.get('ingredients')
+        dish_name, ingredient_text, recipe_text = generate_recipe_response("新的食譜", ingredients)
+        if dish_name and recipe_text:
+            flex_message = FlexSendMessage(
+                alt_text="您的新食譜",
+                contents=create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, 1)
+            )
+            line_bot_api.push_message(user_id, flex_message)
+        else:
+            line_bot_api.push_message(
+                user_id,
+                TextSendMessage(text="生成食譜失敗，請稍後再試。")
+            )
+    elif action == 'save_favorite':
+        recipe_id = params.get('recipe_id')    
+        user_id = user_id or event.source.user_id  # 確保 user_id 不為 null
+        recipe = get_recipe_from_db(db, recipe_id)
+        if recipe:
+            # 將該食譜儲存在 favorites 集合中
+            try:
                 db.collection('favorites').add({
-                    'user_id': user_id,
+                    'user_id': user_id,  # 確保此處使用了正確的 user_id
                     'dish': recipe['dish'],
                     'ingredient': recipe['ingredient'],
                     'recipe': recipe['recipe'],
                     'recipe_id': recipe_id
                 })
-                line_bot_api.reply_message(event.reply_token, TextSendMessage(text="已成功將食譜加入我的最愛!"))
-    except Exception as e:
-        handle_error(event, str(e))
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text="已成功將食譜加入我的最愛!")
+                )
+            except Exception as e:
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text="抱歉，儲存過程中發生錯誤。")
+                )
+            else:
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text="找不到該食譜，無法加入我的最愛")
+                )
 
 
 # 顯示收藏的食譜（前端頁面）
