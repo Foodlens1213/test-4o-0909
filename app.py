@@ -77,7 +77,10 @@ def generate_multiple_recipes(dish_count, dish_type, ingredients):
                 print("生成的食譜重複，重新生成...")
 
     return recipes
-
+    
+def clean_text(text):
+    # 去除無效字符和表情符號
+    return re.sub(r'[^\w\s,.!?]', '', text)
 
 # 創建 Flex Message
 def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, recipe_number):
@@ -143,7 +146,7 @@ def handle_message(event):
         user_id = event.source.user_id
         user_message = event.message.text
         dish_type, dish_count = parse_user_message(user_message)
-        ingredients = user_ingredients.get(user_id)
+        ingredients = user_ingredients.get(user_id,None)
 
         if ingredients:
             # 立即回應確認訊息
@@ -160,7 +163,7 @@ def handle_message(event):
             carousel = {"type": "carousel", "contents": flex_bubbles}
             line_bot_api.push_message(user_id, FlexSendMessage(alt_text="您的多道食譜", contents=carousel))
         else:
-            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="請先上傳圖片來辨識食材。"))
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="請告訴我您想要做什麼料理及道數。"))
     except Exception as e:
         handle_error(event, str(e))
 
