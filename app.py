@@ -105,7 +105,7 @@ def create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingred
             "layout": "vertical",
             "spacing": "sm",
             "contents": [
-                {"type": "button", "action": {"type": "postback", "label": "有沒有其他的食譜", "data":f"action=new_recipe&user_id={user_id}&ingredients_id={ingredients_id}"},
+                {"type": "button", "action": {"type": "postback", "label": "有沒有其他的食譜", "data":f"action=new_recipe&user_id={user_id}&ingredients={ingredients_str}"},
                  "color": "#474242", "style": "primary", "height": "sm"},
                 {"type": "button", "action": {"type": "postback", "label": "把這個食譜加入我的最愛", "data":f"action=save_favorite&recipe_id={recipe_id}"},
                  "color": "#474242", "style": "primary", "height": "sm"}
@@ -151,7 +151,7 @@ def handle_message(event):
             # 立即回應確認訊息
             line_bot_api.reply_message(
                 event.reply_token,
-                TextSendMessage(text="沒問題，正在生成食譜，請稍後~")
+                TextSendMessage(text="沒問題，生成食譜中，請稍後~")
             )
 
             recipes = generate_multiple_recipes(dish_count, dish_type, ingredients)
