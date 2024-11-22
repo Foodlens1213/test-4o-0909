@@ -206,14 +206,14 @@ def handle_postback(event):
                 TextSendMessage(text="找不到該食譜，無法加入我的最愛")
             )
 
-def generate_multiple_recipes(dish_count, ingredients):
+def generate_multiple_recipes(dish_count, dish_type, ingredients):
     recipes = []
     existing_dishes = set()  # 用於追踪生成的菜名，避免重複
 
     for _ in range(dish_count):
         while True:
             # 生成食譜
-            dish_name, ingredient_text, recipe_text = generate_recipe_response("", ingredients)
+            dish_name, ingredient_text, recipe_text = generate_recipe_response(dish_type, 1, ingredients)
 
             # 如果食譜不重複，則加入清單並跳出迴圈
             if dish_name not in existing_dishes:
@@ -240,45 +240,31 @@ def handle_message(event):
     user_id = event.source.user_id
     user_message = event.message.text
 
-    if "道" in user_message or "菜" in user_message:
-        # 從使用者訊息提取數字，表示需要幾道菜
-        dish_count = None
-        # 優先檢查阿拉伯數字
-        if re.search(r"\d+", user_message):
-            dish_count = int(re.search(r"\d+", user_message).group())
-        # 若無阿拉伯數字，檢查漢字
-        else:
-            dish_count = chinese_to_digit(user_message)  # 傳入 user_message
-        # 預設為1道菜，如果數字解析成功，則使用提取到的數字
-        dish_count = dish_count if dish_count is not None else 1
-        ingredients = user_ingredients.get(user_id, None)
+    # 解析使用者訊息
+    dish_type, dish_count = parse_user_message(user_message)
+    ingredients = user_ingredients.get(user_id, None)
 
-        if ingredients:
-            # 根據需要的數量生成多道料理
-            recipes = generate_multiple_recipes(dish_count, ingredients)
+    if ingredients:
+        # 生成多道食譜
+        recipes = generate_multiple_recipes(dish_count, dish_type, ingredients)
 
-            # 準備多頁式回覆
-            flex_bubbles = [
-                create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, i + 1)
-                for i, (dish_name, ingredient_text, recipe_text) in enumerate(recipes)
-            ]
-            carousel = {
-                "type": "carousel",
-                "contents": flex_bubbles
-            }
-            line_bot_api.reply_message(
-                event.reply_token, 
-                FlexSendMessage(alt_text="您的多道食譜", contents=carousel)
-            )
-        else:
-            line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(text="請先上傳圖片來辨識食材。")
-            )
+        # 回覆多頁式的食譜 Flex Message
+        flex_bubbles = [
+            create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, i + 1)
+            for i, (dish_name, ingredient_text, recipe_text) in enumerate(recipes)
+        ]
+        carousel = {
+            "type": "carousel",
+            "contents": flex_bubbles
+        }
+        line_bot_api.reply_message(
+            event.reply_token, 
+            FlexSendMessage(alt_text="您的多道食譜", contents=carousel)
+        )
     else:
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text="請告訴我您想要做什麼料理及道數。")
+            TextSendMessage(text="請先上傳圖片來辨識食材。")
         )
         
 # 顯示收藏的食譜（前端頁面）
