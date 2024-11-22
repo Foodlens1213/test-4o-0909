@@ -120,24 +120,33 @@ def handle_postback(event):
     user_id = params.get('user_id')
     # 修改 handle_postback 函數中的 `new_recipe` 行動回應
     if action == 'new_recipe':
-        # 回覆"沒問題，請稍後~"
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text="沒問題，請稍後~")
         )
-        ingredients_str = params.get('ingredients', '')
-        ingredients = ingredients_str.split(',') if ingredients_str else []
-        dish_name, ingredient_text, recipe_text = generate_recipe_response("新的食譜", ingredients)
-        if dish_name and recipe_text:
-            flex_message = FlexSendMessage(
-                alt_text="您的新食譜",
-                contents=create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, 1)
-            )
-            line_bot_api.push_message(user_id, flex_message)
-        else:
+        try:
+            ingredients_str = params.get('ingredients', '')
+            ingredients = ingredients_str.split(',') if ingredients_str else []
+        
+            # 调用 generate_recipe_response
+            dish_name, ingredient_text, recipe_text = generate_recipe_response("新的食譜", 1, ingredients)
+        
+            if dish_name and recipe_text:
+                flex_message = FlexSendMessage(
+                    alt_text="您的新食譜",
+                    contents=create_flex_message(recipe_text, user_id, dish_name, ingredient_text, ingredients, 1)
+                )
+                line_bot_api.push_message(user_id, flex_message)
+            else:
+                line_bot_api.push_message(
+                    user_id,
+                    TextSendMessage(text="生成食譜失敗，請稍後再試。")
+                )
+        except Exception as e:
+            print(f"生成食譜時發生錯誤: {e}")
             line_bot_api.push_message(
                 user_id,
-                TextSendMessage(text="生成食譜失敗，請稍後再試。")
+                TextSendMessage(text="生成食譜時出現問題，請稍後再試。")
             )
     elif action == 'save_favorite':
         recipe_id = params.get('recipe_id')    
