@@ -160,7 +160,7 @@ def handle_message(event):
                 for i, (dish_name, ingredient_text, recipe_text) in enumerate(recipes)
             ]
             carousel = {"type": "carousel", "contents": flex_bubbles}
-            line_bot_api.push_message(event.reply_token, FlexSendMessage(alt_text="您的多道食譜", contents=carousel))
+            line_bot_api.push_message(user_id, FlexSendMessage(alt_text="您的多道食譜", contents=carousel))
         else:
             line_bot_api.reply_message(event.reply_token, TextSendMessage(text="請先上傳圖片來辨識食材。"))
     except Exception as e:
