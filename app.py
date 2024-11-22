@@ -62,14 +62,16 @@ def ask_user_for_recipe_info():
 
 # 生成多道食譜
 def generate_multiple_recipes(dish_count, dish_type, ingredients):
+    if isinstance(ingredients, str):
+        ingredients = ingredients.split(',')
+        
     recipes = []
     existing_dishes = set()
-
+    
     for i in range(dish_count):
         while True:
             specific_message = f"第 {i + 1} 道 {dish_type} 料理"
             dish_name, ingredient_text, recipe_text = generate_recipe_response(specific_message,ingredients)
-
             if dish_name not in existing_dishes:
                 recipes.append((dish_name, ingredient_text, recipe_text))
                 existing_dishes.add(dish_name)
@@ -173,6 +175,7 @@ def handle_postback(event):
     params = dict(x.split('=') for x in data.split('&'))
     action = params.get('action')
     user_id = params.get('user_id')
+    
     # 修改 handle_postback 函數中的 `new_recipe` 行動回應
     if action == 'new_recipe':
         # 回覆"沒問題，請稍後~"
