@@ -25,30 +25,40 @@ def translate_and_filter_ingredients(detected_labels):
         return None
 
 # 生成食譜
-def generate_recipe_response(user_message, ingredients):
-    prompt = f"用戶希望做料理 {user_message}，可用的食材有：{ingredients}。請按照以下格式生成一個適合的食譜：\n\n料理名稱: [料理名稱]\n食材: [食材列表，單行呈現]\n食譜內容: [分步驟列點，詳述步驟]"
+def generate_recipe_response(dish_type, dish_count, ingredients):
+    # 動態生成 prompt
+    prompt = (
+        f"用戶希望做 {dish_type} 料理，共 {dish_count} 道菜，並指定使用以下食材：{ingredients}。\n"
+        f"請根據需求生成一個詳細的食譜，並按照以下格式輸出：\n\n"
+        f"料理名稱: [料理名稱，請與主題相關並避免重複]\n"
+        f"食材: [食材列表，單行呈現]\n"
+        f"食譜內容: [分步驟列點，詳細描述每個步驟]\n"
+        f"注意：生成的料理應符合主題 {dish_type}，並根據指定的食材創作出高品質食譜。\n"
+    )
+
     try:
+        # 調用 OpenAI API
         response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "你是一位專業的廚師，會根據用戶的需求生成食譜。"},
+                {"role": "system", "content": "你是一位專業的廚師，專注於為用戶創建高質量的食譜。"},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=800
         )
         recipe = response.choices[0].message['content'].strip()
 
-        # 設定預設值，以防解析失敗
+        # 預設值防止解析錯誤
         dish_name = "未命名料理"
         ingredient_text = "未提供食材"
         recipe_text = "未提供食譜內容"
 
-        # 使用正則表達式解析各部分
+        # 正則解析返回的食譜內容
         dish_name_match = re.search(r"(?:料理名稱|名稱)[:：]\s*(.+)", recipe)
         ingredient_text_match = re.search(r"(?:食材|材料)[:：]\s*(.+)", recipe)
         recipe_text_match = re.search(r"(?:食譜內容|步驟)[:：]\s*((.|\n)+)", recipe)
 
-        # 如果匹配成功，則賦值
+        # 賦值解析出的內容
         if dish_name_match:
             dish_name = dish_name_match.group(1).strip()
         if ingredient_text_match:
