@@ -62,9 +62,6 @@ def ask_user_for_recipe_info():
 
 # 生成多道食譜
 def generate_multiple_recipes(dish_count, dish_type, ingredients):
-    if isinstance(ingredients, str):
-        ingredients = ingredients.split(',')
-        
     recipes = []
     existing_dishes = set()
     
@@ -184,8 +181,6 @@ def handle_postback(event):
             TextSendMessage(text="沒問題，生成食譜中，請稍後~")
         )
         ingredients = params.get('ingredients')
-        if isinstance(ingredients, str):
-            ingredients = ingredients.split(',')  # 將字串轉換為列表
         dish_name, ingredient_text, recipe_text = generate_recipe_response("新的食譜", ingredients)
         if dish_name and recipe_text:
             flex_message = FlexSendMessage(
@@ -221,11 +216,11 @@ def handle_postback(event):
                     event.reply_token,
                     TextSendMessage(text="抱歉，儲存過程中發生錯誤。")
                 )
-            else:
-                line_bot_api.reply_message(
-                    event.reply_token,
-                    TextSendMessage(text="找不到該食譜，無法加入我的最愛")
-                )
+        else:
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="找不到該食譜，無法加入我的最愛")
+            )
 
 
 # 顯示收藏的食譜（前端頁面）
