@@ -298,6 +298,7 @@ def sync_labels():
         return jsonify({"status": "error", "message": "Firebase 初始化失敗"}), 500
 
     try:
+        print("初始化 Vertex AI...")
         # 初始化 Vertex AI
         aiplatform.init(project=os.getenv("GOOGLE_CLOUD_PROJECT"), location="us-central1")
 
@@ -353,14 +354,5 @@ def health_check():
     return "OK", 200
 
 if __name__ == "__main__":
-    
-    if db:
-        print("Firebase 初始化成功，系統啟動中...")
-    else:
-        print("Firebase 初始化失敗，請檢查環境設定。")
-
-    # 測試同步功能（可選）
-    # sync_image_labels_to_firestore(db)
-    
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
