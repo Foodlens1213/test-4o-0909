@@ -5,6 +5,7 @@ from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMess
 import os
 import io
 from dotenv import load_dotenv
+from google.cloud import aiplatform
 from firebase_service import initialize_firebase, save_recipe_to_db, get_recipe_from_db, get_user_favorites, delete_favorite_from_db
 from google_vision_service import detect_labels
 from chatgpt_service import translate_and_filter_ingredients, generate_recipe_response
@@ -297,11 +298,38 @@ def sync_labels():
         return jsonify({"status": "error", "message": "Firebase 初始化失敗"}), 500
 
     try:
-        result = sync_image_labels_to_firestore(db)
-        return jsonify(result), 200
+        # 初始化 Vertex AI
+        aiplatform.init(project="FL0908", location="us-central1")
+
+        # 獲取資料集
+        dataset_id = "7977128933084626944"  # 替換為您的資料集 ID
+        dataset = aiplatform.ImageDataset(dataset_name=f"projects/FL0908/locations/us-central1/datasets/{dataset_id}")
+        images = dataset.list_data_items()
+
+        print(f"從資料集獲取了 {len(images)} 張圖片。")
+
+        # 處理每張圖片並同步到 Firestore
+        for image in images:
+            image_id = image.name  # 圖片唯一識別碼
+            labels = image.labels  # 標籤數據
+            image_url = image.metadata.get("image_url", "")  # 圖片的 URL 或元數據中提取的其他信息
+
+            print(f"處理圖片: ID={image_id}, URL={image_url}, Labels={labels}")
+
+            # 將資料寫入 Firestore
+            doc_ref = db.collection("image_labels").document(image_id)
+            doc_ref.set({
+                "image_url": image_url,
+                "labels": labels,  # 自動存為字典格式
+                "dataset_name": "food",  # 資料集名稱，可按需更改
+                "created_at": firestore.SERVER_TIMESTAMP  # Firestore 自動生成時間戳
+            })
+
+        print("所有圖片標籤同步完成！")
+        return {"status": "success", "message": f"同步了 {len(images)} 張圖片。"}
     except Exception as e:
-        print(f"同步標籤時發生錯誤: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
+        print(f"同步圖片標籤時發生錯誤: {e}")
+        return {"status": "error", "message": str(e)}
 
 # Webhook callback 處理 LINE 訊息
 @app.route("/callback", methods=["POST"])
