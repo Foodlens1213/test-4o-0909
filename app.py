@@ -299,11 +299,11 @@ def sync_labels():
 
     try:
         # 初始化 Vertex AI
-        aiplatform.init(project="FL0908", location="us-central1")
+        aiplatform.init(project=os.getenv("GOOGLE_CLOUD_PROJECT"), location="us-central1")
 
         # 獲取資料集
-        dataset_id = "7977128933084626944"  # 替換為您的資料集 ID
-        dataset = aiplatform.ImageDataset(dataset_name=f"projects/FL0908/locations/us-central1/datasets/{dataset_id}")
+        dataset_id = os.getenv("VERTEX_DATASET_ID")  # 替換為您的資料集 ID
+        dataset = aiplatform.ImageDataset(dataset_name=f"projects/{os.getenv('GOOGLE_CLOUD_PROJECT')}/locations/us-central1/datasets/{dataset_id}")
         images = dataset.list_data_items()
 
         print(f"從資料集獲取了 {len(images)} 張圖片。")
