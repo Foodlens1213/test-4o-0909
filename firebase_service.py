@@ -99,21 +99,27 @@ def sync_image_labels_to_firestore(db):
         dataset = aiplatform.ImageDataset(dataset_name=f"projects/FL0908/locations/us-central1/datasets/{dataset_id}")
         images = dataset.list_data_items()
 
-        # 處理每張圖片
+        print(f"從資料集獲取了 {len(images)} 張圖片。")
+
+        # 處理每張圖片並同步到 Firestore
         for image in images:
             image_id = image.name  # 圖片唯一識別碼
             labels = image.labels  # 標籤數據
             image_url = image.metadata.get("image_url", "")  # 圖片的 URL 或元數據中提取的其他信息
 
+            print(f"處理圖片: ID={image_id}, URL={image_url}, Labels={labels}")
+
             # 將資料寫入 Firestore
             doc_ref = db.collection("image_labels").document(image_id)
             doc_ref.set({
                 "image_url": image_url,
-                "labels": labels,  # 預設會自動存為字典格式
+                "labels": labels,  # 自動存為字典格式
                 "dataset_name": "food",  # 資料集名稱，可按需更改
-                "created_at": firestore.SERVER_TIMESTAMP  # Firestore 自動生成的時間戳
+                "created_at": firestore.SERVER_TIMESTAMP  # Firestore 自動生成時間戳
             })
 
-        print("Image labels synced successfully")
+        print("所有圖片標籤同步完成！")
+        return {"status": "success", "message": f"同步了 {len(images)} 張圖片。"}
     except Exception as e:
         print(f"同步圖片標籤時發生錯誤: {e}")
+        return {"status": "error", "message": str(e)}
