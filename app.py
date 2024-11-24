@@ -291,6 +291,17 @@ def get_recipe_detail(recipe_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/sync_labels', methods=['POST'])
+def sync_labels():
+    if not db:
+        return jsonify({"status": "error", "message": "Firebase 初始化失敗"}), 500
+
+    try:
+        result = sync_image_labels_to_firestore(db)
+        return jsonify(result), 200
+    except Exception as e:
+        print(f"同步標籤時發生錯誤: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 # Webhook callback 處理 LINE 訊息
 @app.route("/callback", methods=["POST"])
@@ -307,11 +318,21 @@ def callback():
         print(f"發生錯誤: {str(e)}")
         abort(500)
     return "OK"
+    
 # 健康檢查路由
 @app.route("/health", methods=["GET"])
 def health_check():
     return "OK", 200
 
 if __name__ == "__main__":
+    
+    if db:
+        print("Firebase 初始化成功，系統啟動中...")
+    else:
+        print("Firebase 初始化失敗，請檢查環境設定。")
+
+    # 測試同步功能（可選）
+    # sync_image_labels_to_firestore(db)
+    
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
