@@ -1,7 +1,7 @@
 import os
 import firebase_admin
 from firebase_admin import credentials, firestore
-from google.cloud import aiplatform
+
 
 # 初始化 Firebase Admin SDK 和 Firestore
 def initialize_firebase():
