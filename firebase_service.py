@@ -1,6 +1,7 @@
 import os
 import firebase_admin
 from firebase_admin import credentials, firestore
+from google.cloud import aiplatform
 
 # 初始化 Firebase Admin SDK 和 Firestore
 def initialize_firebase():
@@ -55,7 +56,7 @@ def get_user_favorites(db, user_id):
     except Exception as e:
         print(f"Firestore 查詢錯誤: {e}")
         return None
-        
+
 # 從 Firestore 刪除指定的收藏食譜
 def delete_favorite_from_db(db, recipe_id):
     try:
@@ -87,5 +88,32 @@ def delete_favorite_from_db(db, recipe_id):
         print(f"刪除文檔時發生錯誤: {e}")
         return False
 
+# 同步 Vertex AI 圖片標籤到 Firestore
+def sync_image_labels_to_firestore(db):
+    try:
+        # 初始化 Vertex AI
+        aiplatform.init(project="FL0908", location="us-central1")
 
-   
+        # 獲取資料集
+        dataset_id = "7977128933084626944"  # 替換為您的資料集 ID
+        dataset = aiplatform.ImageDataset(dataset_name=f"projects/FL0908/locations/us-central1/datasets/{dataset_id}")
+        images = dataset.list_data_items()
+
+        # 處理每張圖片
+        for image in images:
+            image_id = image.name  # 圖片唯一識別碼
+            labels = image.labels  # 標籤數據
+            image_url = image.metadata.get("image_url", "")  # 圖片的 URL 或元數據中提取的其他信息
+
+            # 將資料寫入 Firestore
+            doc_ref = db.collection("image_labels").document(image_id)
+            doc_ref.set({
+                "image_url": image_url,
+                "labels": labels,  # 預設會自動存為字典格式
+                "dataset_name": "food",  # 資料集名稱，可按需更改
+                "created_at": firestore.SERVER_TIMESTAMP  # Firestore 自動生成的時間戳
+            })
+
+        print("Image labels synced successfully")
+    except Exception as e:
+        print(f"同步圖片標籤時發生錯誤: {e}")
