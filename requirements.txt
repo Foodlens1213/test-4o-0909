@@ -5,6 +5,7 @@ requests
 python-dotenv
 gunicorn
 google-cloud-vision
+google-cloud-aiplatform
 mysql-connector-python
 google-api-python-client
 pygame
