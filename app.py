@@ -6,7 +6,7 @@ import os
 import io
 from dotenv import load_dotenv
 from firebase_service import initialize_firebase, save_recipe_to_db, get_recipe_from_db, get_user_favorites, delete_favorite_from_db
-from google_vision_service import detect_labels
+from google_vision_service import detect_labels, initialize_vision_client, initialize_vertex_ai, fetch_labels_from_vertex
 from chatgpt_service import translate_and_filter_ingredients, generate_recipe_response
 
 # 載入環境變數
