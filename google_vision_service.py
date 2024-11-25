@@ -1,6 +1,5 @@
 import os
 from google.cloud import vision
-from google.cloud import aiplatform
 import io
 
 # 初始化 Google Cloud Vision API 客戶端
@@ -34,23 +33,3 @@ def initialize_vertex_ai():
         print(f"初始化 Vertex AI 失敗: {e}")
         raise
 
-# 從 Vertex AI Dataset 獲取標籤
-def fetch_labels_from_vertex(dataset_id):
-    try:
-        dataset = aiplatform.ImageDataset(
-            dataset_name=f"projects/{os.getenv('GOOGLE_CLOUD_PROJECT')}/locations/us-central1/datasets/{dataset_id}"
-        )
-        print(f"正在查詢 Dataset：{dataset_id}")
-        data_items = dataset.list_data_items()
-        print(f"找到 {len(data_items)} 個圖片項目。")
-
-        labels_data = {}
-        for item in data_items:
-            item_id = item.name.split("/")[-1]
-            labels = item.labels
-            metadata = item.metadata.get("image_url", "未知圖片 URL")
-            labels_data[item_id] = {"labels": labels, "metadata": metadata}
-        return labels_data
-    except Exception as e:
-        print(f"查詢 Vertex AI 標籤失敗: {e}")
-        return None
