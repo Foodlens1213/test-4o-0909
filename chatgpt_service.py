@@ -33,8 +33,8 @@ def generate_recipe_response(dish_type, dish_count, ingredients):
         f"料理名稱: [料理名稱，請與主題相關並避免重複]\n"
         f"食材: [食材列表，單行呈現]\n"
         f"食譜內容: [分步驟列點，詳細描述每個步驟]\n"
-        f"注意：生成的料理應符合主題 {dish_type}，並根據指定的食材創作出高品質食譜。\n"
-        f"請確保生成的食譜從 https://icook.tw/ 中搜尋相關資料進行匹配。\n"
+        f"注意：生成的料理應符合主題 {dish_type}，並根據指定的食材產出食譜。\n"
+        f"請確保生成的食譜是從 https://icook.tw/ 中的料理。\n"
     )
 
     try:
@@ -42,7 +42,7 @@ def generate_recipe_response(dish_type, dish_count, ingredients):
         response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "你是一位專業的廚師，專注於為用戶創建高質量的食譜。"},
+                {"role": "system", "content": "你是一位專業的廚師，專注於為用戶創建食譜。"},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=800
