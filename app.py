@@ -294,7 +294,7 @@ def get_recipe_detail(recipe_id):
 @app.route("/fetch_labels", methods=["GET"])
 def fetch_labels():
     try:
-        labels = fetch_labels_from_vertex("YOUR_DATASET_ID")
+        labels = fetch_labels_from_vertex("7977128933084626944")
         return jsonify(labels), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
