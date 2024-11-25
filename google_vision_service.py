@@ -29,7 +29,7 @@ def detect_labels(image_content):
 def initialize_vertex_ai():
     try:
         # 設定您的專案 ID 和地區
-        aiplatform.init(project="YOUR_PROJECT_ID", location="us-central1")
+        aiplatform.init(project="fl0908", location="us-central1")
         print("Vertex AI 初始化完成！")
     except Exception as e:
         print(f"初始化 Vertex AI 失敗: {e}")
@@ -39,7 +39,7 @@ def fetch_labels_from_vertex(dataset_id):
     try:
         # 加載指定的 Dataset
         dataset = aiplatform.ImageDataset(
-            dataset_name=f"projects/YOUR_PROJECT_ID/locations/us-central1/datasets/{dataset_id}"
+            dataset_name=f"projects/fl0908/locations/us-central1/datasets/{dataset_id}"
         )
         print(f"正在查詢 Dataset：{dataset_id}")
 
