@@ -34,6 +34,7 @@ def generate_recipe_response(dish_type, dish_count, ingredients):
         f"食材: [食材列表，單行呈現]\n"
         f"食譜內容: [分步驟列點，詳細描述每個步驟]\n"
         f"注意：生成的料理應符合主題 {dish_type}，並根據指定的食材創作出高品質食譜。\n"
+        f"請確保生成的食譜從 https://icook.tw/ 中搜尋相關資料進行匹配。\n"
     )
 
     try:
