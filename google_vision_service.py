@@ -35,31 +35,17 @@ def initialize_vertex_ai():
         print(f"初始化 Vertex AI 失敗: {e}")
         raise
 # 查詢 Dataset 標籤
-def fetch_labels_from_vertex(dataset_id):
-    try:
-        # 加載指定的 Dataset
-        dataset = aiplatform.ImageDataset(
-            dataset_name=f"projects/fl0908/locations/us-central1/datasets/{dataset_id}"
-        )
-        print(f"正在查詢 Dataset：{dataset_id}")
+def predict_with_vertex_ai(endpoint_id, project, location, instances):
+    client = aiplatform.gapic.PredictionServiceClient()
 
-        # 列出 Dataset 中的所有圖片
-        data_items = dataset.list_data_items()
-        print(f"找到 {len(data_items)} 個圖片項目。")
+    endpoint = f"projects/{project}/locations/{location}/endpoints/{endpoint_id}"
 
-        # 將標籤提取出來
-        labels_data = {}
-        for item in data_items:
-            item_id = item.name.split("/")[-1]  # 獲取圖片 ID
-            labels = item.labels  # 獲取標籤
-            metadata = item.metadata.get("image_url", "未知圖片 URL")  # 可選的圖片 URL
-            labels_data[item_id] = {
-                "labels": labels,
-                "metadata": metadata,
-            }
-            print(f"圖片 ID: {item_id}, 標籤: {labels}, URL: {metadata}")
+    # 格式化輸入的資料
+    response = client.predict(
+        endpoint=endpoint,
+        instances=instances,
+    )
 
-        return labels_data
-    except Exception as e:
-        print(f"查詢 Dataset 標籤失敗: {e}")
-        raise
+    # 返回預測結果
+    predictions = response.predictions
+    return predictions
