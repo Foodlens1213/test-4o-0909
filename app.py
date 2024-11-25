@@ -29,41 +29,29 @@ def handle_image_message(event):
     # 讀取圖片內容
     image_data = io.BytesIO(message_content.content)
 
-    # 使用 Vision API 獲取標籤
+    # 使用封裝的 detect_labels 方法
     detected_labels = detect_labels(image_data.read())
-    print(f"Vision API 標籤: {detected_labels}")
 
-    # 使用 Vertex AI Dataset 獲取標籤
-    dataset_id = os.getenv("VERTEX_DATASET_ID")  # 設定您的 Dataset ID
-    vertex_labels = fetch_labels_from_vertex(dataset_id)
-    print(f"Vertex AI 標籤: {vertex_labels}")
-
-    # 匹配兩者的標籤
-    if detected_labels and vertex_labels:
-        matched_labels = {
-            label: detected_labels.get(label, 0.0)
-            for label in vertex_labels.keys()
-            if label in detected_labels
-        }
-        print(f"匹配的標籤: {matched_labels}")
+    if detected_labels:
+        print(f"辨識到的食材: {detected_labels}")  # 在 log 中顯示食材
+        processed_text = translate_and_filter_ingredients(detected_labels)
         user_id = event.source.user_id
-
-        # 將匹配的標籤處理為文字回應
-        if matched_labels:
-            labels_text = "\n".join([f"{label}: {score:.2f}" for label, score in matched_labels.items()])
+        if processed_text:
+            user_ingredients[user_id] = processed_text
+            question_response = ask_user_for_recipe_info()
             line_bot_api.reply_message(
                 event.reply_token,
-                TextSendMessage(text=f"根據圖片分析到的標籤:\n{labels_text}")
+                TextSendMessage(text=question_response)
             )
         else:
             line_bot_api.reply_message(
                 event.reply_token,
-                TextSendMessage(text="未找到匹配的標籤，請嘗試其他圖片。")
+                TextSendMessage(text="未能識別出任何食材，請嘗試上傳另一張清晰的圖片。")
             )
     else:
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text="圖片分析失敗，請稍後再試。")
+            TextSendMessage(text="無法辨識出任何物體，請確保圖片中的食材明顯可見。")
         )
 
 # 儲存處理後的食材資料（供後續使用）
